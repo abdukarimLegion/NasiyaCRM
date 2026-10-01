@@ -33,13 +33,17 @@ export default function DashboardPage() {
   const riskTotal = data.riskMix.reduce((s, r) => s + r.count, 0);
   const risk = data.riskMix.map((r) => ({ cat: r.category, pct: riskTotal ? (r.count / riskTotal) * 100 : 0, count: r.count }));
   const monthly = data.monthly.map((m) => ({ m: m.month.slice(5), in: m.collected / 1e6, out: m.issued / 1e6 }));
-  const mlnTick = (n: number) => (n === 0 ? '0' : n >= 1 ? String(Math.round(n)) : n.toFixed(1).replace('.', ','));
+  const mlnTick = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1).replace('.', ','));
+
+  const pf = data.portfolio;
+  const forecast = data.profitForecast.map((m) => ({ m: m.month.slice(5), p: m.profit / 1e6 }));
+  const earnedPct = pf.expectedProfit > 0 ? Math.round((pf.earnedProfit / pf.expectedProfit) * 100) : 0;
 
   return (
     <div className="page">
       <div className="dash-hero">
         <Stat icon="wallet" label={t('totalDebt')} value={fmtMln(k.totalDebt, lang)}
-          sub={<>{t('activeContracts')}: <b>{k.activeContracts}</b></>} />
+          sub={<>{t('activeContracts')}: <b>{k.activeContracts + k.lateContracts}</b></>} />
         <Stat icon="trend" tone="gold" label={`${t('totalIn')} · ${t('thisMonth')}`} value={fmtMln(k.collectedThisMonth, lang)}
           sub={k.collectionRate != null ? <>{t('collectionRate')}: <b>{k.collectionRate}%</b></> : <>{t('issued')}: {fmtMln(k.issuedThisMonth, lang)}</>} />
         <Stat icon="alert" tone="danger" label={t('overdue')} value={fmtMln(k.overdue, lang)}
@@ -49,8 +53,57 @@ export default function DashboardPage() {
       <div className="dash-mini">
         <MiniStat icon="clock" tone="info" label={t('todayPay')} value={k.todayPayments} />
         <MiniStat icon="calendar" label={t('tomorrowPay')} value={k.tomorrowPayments} />
-        <MiniStat icon="contracts" label={t('contracts')} value={k.activeContracts + k.lateContracts} />
+        <MiniStat icon="contracts" label={t('activeContracts')} value={k.activeContracts + k.lateContracts} />
       </div>
+
+      <Card className="profit-card">
+        <CardHead title={t('profitTitle')} sub={t('profitSub')}
+          right={<>
+            <span className="badge badge-neutral">{t('avgMarkup')}: {pf.avgMarkupPct ?? '—'}%</span>
+            <span className="badge badge-neutral">{t('avgTerm')}: {pf.avgTermMonths ?? '—'} {t('months')}</span>
+          </>} />
+        <div className="card-pad">
+          <div className="profit-figures">
+            <div className="pf">
+              <span className="pf-label">{t('expectedProfit')}</span>
+              <b className="pf-val">{fmtMln(pf.expectedProfit, lang)}</b>
+              <span className="faint">{t('financed')}: {fmtMln(pf.financed, lang)}</span>
+            </div>
+            <div className="pf">
+              <span className="pf-label">{t('earnedProfit')}</span>
+              <b className="pf-val" style={{ color: 'var(--success)' }}>{fmtMln(pf.earnedProfit, lang)}</b>
+              <span className="faint">{earnedPct}% {t('ofExpected')}</span>
+            </div>
+            <div className="pf">
+              <span className="pf-label">{t('remainingProfit')}</span>
+              <b className="pf-val" style={{ color: 'var(--gold-strong)' }}>{fmtMln(pf.remainingProfit, lang)}</b>
+              <span className="faint">{t('avgTicket')}: {fmtMln(pf.avgTicket, lang)}</span>
+            </div>
+            <div className="pf">
+              <span className="pf-label">{t('contractsTotal')}</span>
+              <b className="pf-val">{pf.contracts}</b>
+              <span className="faint">{t('thisMonth')}: {pf.contractsThisMonth} · {t('st_closed')}: {pf.closedContracts}</span>
+            </div>
+          </div>
+
+          <div className="profit-bar" title={`${earnedPct}%`}>
+            <i style={{ width: `${earnedPct}%` }} />
+          </div>
+          <div className="row gap-lg" style={{ marginTop: 10 }}>
+            <span className="legend"><i style={{ background: 'var(--primary)' }} />{t('earnedProfit')}</span>
+            <span className="legend"><i style={{ background: 'var(--surface-3)' }} />{t('remainingProfit')}</span>
+          </div>
+        </div>
+
+        <div className="card-pad profit-forecast">
+          <div className="row between" style={{ marginBottom: 14 }}>
+            <b style={{ fontSize: 14 }}>{t('profitForecast')}</b>
+            <span className="faint" style={{ fontSize: 12 }}>{lang === 'ru' ? 'млн сум' : "mln so'm"}</span>
+          </div>
+          <BarsChart data={forecast} height={150} fmt={mlnTick}
+            keys={[{ key: 'p', label: t('profit'), color: 'var(--gold)' }]} />
+        </div>
+      </Card>
 
       <div className="dash-grid" style={{ marginTop: 22 }}>
         <Card>

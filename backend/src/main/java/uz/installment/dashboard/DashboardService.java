@@ -30,7 +30,19 @@ public class DashboardService {
     public record RiskSlice(String category, long count) {
     }
 
-    public record Dashboard(Kpis kpis, List<MonthPoint> monthly, List<RiskSlice> riskMix) {
+    /** Portfel va murobaha foydasi (ustama) bo'yicha umumiy ko'rsatkichlar. */
+    public record Portfolio(long contracts, long contractsThisMonth, long closedContracts,
+                            BigDecimal financed, BigDecimal expectedProfit, BigDecimal earnedProfit,
+                            BigDecimal remainingProfit, BigDecimal avgMarkupPct,
+                            BigDecimal avgTermMonths, BigDecimal avgTicket) {
+    }
+
+    /** Jadval bo'yicha kelgusi oylarda tushishi kutilayotgan ustama. */
+    public record ProfitPoint(String month, BigDecimal profit) {
+    }
+
+    public record Dashboard(Kpis kpis, Portfolio portfolio, List<MonthPoint> monthly,
+                            List<ProfitPoint> profitForecast, List<RiskSlice> riskMix) {
     }
 
     public Dashboard get() {
@@ -84,12 +96,51 @@ public class DashboardService {
                 """, p, (rs, i) -> new MonthPoint(rs.getString("month"), rs.getBigDecimal("collected"),
                 rs.getBigDecimal("issued")));
 
+        Portfolio portfolio = jdbc.queryForObject("""
+                select
+                  count(*)                                                                    as contracts,
+                  count(*) filter (where created_at >= :monthStartTs::timestamptz)            as contracts_month,
+                  count(*) filter (where status = 'CLOSED')                                   as closed_cnt,
+                  coalesce(sum(cost_price - down_payment), 0)                                 as financed,
+                  coalesce(sum(markup_amount), 0)                                             as expected_profit,
+                  case when sum(cost_price - down_payment) > 0
+                       then round(100.0 * sum(markup_amount) / sum(cost_price - down_payment), 1) end as avg_markup_pct,
+                  round(avg(term_months)::numeric, 1)                                         as avg_term,
+                  coalesce(round(avg(sale_price)), 0)                                         as avg_ticket,
+                  -- to'langan qismga to'g'ri keladigan ustama (ulush bo'yicha)
+                  coalesce((select round(sum(s.markup_part * s.paid_amount / nullif(s.amount, 0)))
+                              from schedule_items s join contracts c2 on c2.id = s.contract_id
+                             where c2.status <> 'CANCELLED'), 0)                              as earned_profit
+                from contracts
+                where status <> 'CANCELLED'
+                """, p, (rs, i) -> {
+            BigDecimal expected = rs.getBigDecimal("expected_profit");
+            BigDecimal earned = rs.getBigDecimal("earned_profit");
+            return new Portfolio(rs.getLong("contracts"), rs.getLong("contracts_month"), rs.getLong("closed_cnt"),
+                    rs.getBigDecimal("financed"), expected, earned, expected.subtract(earned),
+                    rs.getBigDecimal("avg_markup_pct"), rs.getBigDecimal("avg_term"), rs.getBigDecimal("avg_ticket"));
+        });
+
+        List<ProfitPoint> profitForecast = jdbc.query("""
+                with months as (
+                  select generate_series(:monthStart::date, :monthStart::date + interval '5 month',
+                                         interval '1 month')::date as m
+                )
+                select to_char(m.m, 'YYYY-MM') as month,
+                       coalesce((select sum(s.markup_part) from schedule_items s
+                                  join contracts c on c.id = s.contract_id
+                                 where c.status in ('ACTIVE','LATE')
+                                   and date_trunc('month', s.due_date)::date = m.m), 0) as profit
+                from months m
+                order by m.m
+                """, p, (rs, i) -> new ProfitPoint(rs.getString("month"), rs.getBigDecimal("profit")));
+
         List<RiskSlice> risk = jdbc.query("""
                 select risk_category, count(*) as cnt from contracts
                 where status in ('ACTIVE','LATE') and risk_category is not null
                 group by risk_category order by risk_category
                 """, p, (rs, i) -> new RiskSlice(rs.getString("risk_category"), rs.getLong("cnt")));
 
-        return new Dashboard(kpis, monthly, risk);
+        return new Dashboard(kpis, portfolio, monthly, profitForecast, risk);
     }
 }

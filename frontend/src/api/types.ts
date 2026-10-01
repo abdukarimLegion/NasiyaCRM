@@ -241,7 +241,20 @@ export interface Dashboard {
     lateContracts: number;
     collectionRate?: number;
   };
+  portfolio: {
+    contracts: number;
+    contractsThisMonth: number;
+    closedContracts: number;
+    financed: number;
+    expectedProfit: number;
+    earnedProfit: number;
+    remainingProfit: number;
+    avgMarkupPct?: number;
+    avgTermMonths?: number;
+    avgTicket: number;
+  };
   monthly: { month: string; collected: number; issued: number }[];
+  profitForecast: { month: string; profit: number }[];
   riskMix: { category: RiskCategory; count: number }[];
 }
 
