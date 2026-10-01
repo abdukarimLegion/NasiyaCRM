@@ -49,13 +49,13 @@ export default function ProductsPage() {
             <tbody>
               {data?.map((p) => (
                 <tr key={p.id} onClick={() => hasRole('ADMIN') && setEdit(p)}>
-                  <td><b>{p.name}</b></td>
-                  <td className="muted">{catName(p.categoryId)}</td>
-                  <td className="num">{fmtSom(p.price, lang)}</td>
-                  <td className="num">{p.markupPct}%</td>
-                  <td>{p.termMin}–{p.termMax} {t('months')}</td>
-                  <td className="num">{p.stock}</td>
-                  <td>{p.active ? <Badge tone="success" dot>{t('active')}</Badge> : <Badge>{t('inactive')}</Badge>}</td>
+                  <td className="cell-main"><b>{p.name}</b></td>
+                  <td className="muted" data-label={t('category')}>{catName(p.categoryId)}</td>
+                  <td className="num" data-label={t('price')}>{fmtSom(p.price, lang)}</td>
+                  <td className="num" data-label={t('defMarkup')}>{p.markupPct}%</td>
+                  <td data-label={t('termRange')}>{p.termMin}–{p.termMax} {t('months')}</td>
+                  <td className="num" data-label={t('stock')}>{p.stock}</td>
+                  <td data-label={t('status')}>{p.active ? <Badge tone="success" dot>{t('active')}</Badge> : <Badge>{t('inactive')}</Badge>}</td>
                 </tr>
               ))}
             </tbody>

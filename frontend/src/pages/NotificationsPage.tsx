@@ -35,10 +35,10 @@ export default function NotificationsPage() {
             <tbody>
               {templates.data?.map((tp) => (
                 <tr key={tp.id} onClick={() => hasRole('ADMIN') && setEdit(tp)}>
-                  <td><b>{t(`e_${tp.eventKey}`)}</b></td>
-                  <td>{chLabel[tp.channel]}</td>
-                  <td className="muted" style={{ maxWidth: 420 }}>{i18n.language === 'ru' ? tp.textRu : tp.textUz}</td>
-                  <td>{tp.enabled ? <Badge tone="success" dot>{t('enabled')}</Badge> : <Badge>{t('disabled')}</Badge>}</td>
+                  <td className="cell-main"><b>{t(`e_${tp.eventKey}`)}</b></td>
+                  <td data-label={t('channel')}>{chLabel[tp.channel]}</td>
+                  <td className="muted" data-label={t('template')} style={{ maxWidth: 420 }}>{i18n.language === 'ru' ? tp.textRu : tp.textUz}</td>
+                  <td data-label={t('status')}>{tp.enabled ? <Badge tone="success" dot>{t('enabled')}</Badge> : <Badge>{t('disabled')}</Badge>}</td>
                 </tr>
               ))}
             </tbody>
@@ -53,12 +53,12 @@ export default function NotificationsPage() {
             <tbody>
               {log.data?.content.map((l) => (
                 <tr key={l.id} style={{ cursor: 'default' }}>
-                  <td>{fmtDate(l.createdAt, i18n.language)}</td>
-                  <td>{t(`e_${l.eventKey}`)}</td>
-                  <td>{chLabel[l.channel]}</td>
-                  <td className="mono">{l.recipient}</td>
-                  <td className="muted" style={{ maxWidth: 380 }}>{l.message}</td>
-                  <td title={l.error}>
+                  <td data-label={t('date')}>{fmtDate(l.createdAt, i18n.language)}</td>
+                  <td className="cell-main"><b>{t(`e_${l.eventKey}`)}</b></td>
+                  <td data-label={t('channel')}>{chLabel[l.channel]}</td>
+                  <td className="mono" data-label={t('phone')}>{l.recipient}</td>
+                  <td className="muted" data-label={t('template')} style={{ maxWidth: 380 }}>{l.message}</td>
+                  <td data-label={t('status')} title={l.error}>
                     <Badge tone={l.status === 'SENT' ? 'success' : l.status === 'FAILED' ? 'danger' : 'neutral'}>{l.status}</Badge>
                   </td>
                 </tr>

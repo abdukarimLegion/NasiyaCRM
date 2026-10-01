@@ -37,12 +37,12 @@ export default function PaymentsPage() {
             <tbody>
               {data?.content.map((p) => (
                 <tr key={p.id} onClick={() => nav(`/contracts/${p.contractId}`)}>
-                  <td>{fmtDate(p.paidAt, lang)}</td>
-                  <td className="mono">{p.contractNo}</td>
-                  <td>{p.clientName}</td>
-                  <td>{t(`m_${p.method}`)}</td>
-                  <td className="num">{fmtSom(p.amount, lang)}</td>
-                  <td className="muted">{p.note}</td>
+                  <td data-label={t('date')}>{fmtDate(p.paidAt, lang)}</td>
+                  <td className="mono" data-label={t('contractNo')}>{p.contractNo}</td>
+                  <td className="cell-main"><b>{p.clientName}</b></td>
+                  <td data-label={t('method')}>{t(`m_${p.method}`)}</td>
+                  <td className="num" data-label={t('amount')}>{fmtSom(p.amount, lang)}</td>
+                  <td className="muted" data-label={t('note')}>{p.note}</td>
                 </tr>
               ))}
             </tbody>

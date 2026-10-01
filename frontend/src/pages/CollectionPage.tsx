@@ -45,13 +45,13 @@ export default function CollectionPage() {
             <tbody>
               {data?.map((r) => (
                 <tr key={r.contractId} onClick={() => setSelected(r)}>
-                  <td><Link to={`/clients/${r.clientId}`} onClick={(e) => e.stopPropagation()}><b>{r.clientName}</b></Link></td>
-                  <td className="mono">{r.contractNo}</td>
-                  <td className="mono"><a href={`tel:${r.phone}`} onClick={(e) => e.stopPropagation()}>{r.phone}</a></td>
-                  <td className="num">{fmtSom(r.overdueAmount, lang)}</td>
-                  <td>{r.daysLate} {t('daysLateShort')}</td>
-                  <td><Badge tone={STAGE_TONE[r.stage]} dot>{t(STAGE_KEY[r.stage])}</Badge></td>
-                  <td>{fmtDate(r.lastActionDate, lang)}</td>
+                  <td className="cell-main"><Link to={`/clients/${r.clientId}`} onClick={(e) => e.stopPropagation()}><b>{r.clientName}</b></Link></td>
+                  <td className="mono" data-label={t('contractNo')}>{r.contractNo}</td>
+                  <td className="mono" data-label={t('phone')}><a href={`tel:${r.phone}`} onClick={(e) => e.stopPropagation()}>{r.phone}</a></td>
+                  <td className="num" data-label={t('overdue')}>{fmtSom(r.overdueAmount, lang)}</td>
+                  <td data-label={t('daysLate')}>{r.daysLate} {t('daysLateShort')}</td>
+                  <td data-label={t('status')}><Badge tone={STAGE_TONE[r.stage]} dot>{t(STAGE_KEY[r.stage])}</Badge></td>
+                  <td data-label={t('lastAction')}>{fmtDate(r.lastActionDate, lang)}</td>
                 </tr>
               ))}
             </tbody>

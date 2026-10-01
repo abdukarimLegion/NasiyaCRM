@@ -51,13 +51,13 @@ export default function ClientDetailPage() {
               <tbody>
                 {data.contracts.map((x) => (
                   <tr key={x.id} onClick={() => nav(`/contracts/${x.id}`)}>
-                    <td className="mono">{x.contractNo}</td>
-                    <td>{x.productName}</td>
-                    <td className="num">{fmtSom(x.salePrice, lang)}</td>
-                    <td className="num">{fmtSom(x.remaining, lang)}</td>
-                    <td>{fmtDate(x.nextDue, lang)}</td>
-                    <td><ContractStatusBadge status={x.status} /></td>
-                    <td><RiskPill cat={x.riskCategory} /></td>
+                    <td className="cell-main mono"><b>{x.contractNo}</b></td>
+                    <td data-label={t('product')}>{x.productName}</td>
+                    <td className="num" data-label={t('salePrice')}>{fmtSom(x.salePrice, lang)}</td>
+                    <td className="num" data-label={t('remaining')}>{fmtSom(x.remaining, lang)}</td>
+                    <td data-label={t('nextPay')}>{fmtDate(x.nextDue, lang)}</td>
+                    <td data-label={t('status')}><ContractStatusBadge status={x.status} /></td>
+                    <td data-label={t('risk')}><RiskPill cat={x.riskCategory} /></td>
                   </tr>
                 ))}
               </tbody>

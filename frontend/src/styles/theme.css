@@ -449,12 +449,45 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   color: var(--text-faint); font-weight: 600; padding: 12px var(--pad-card); white-space: nowrap;
   border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface);
 }
-.tbl tbody td { padding: var(--row-pad-y) var(--pad-card); border-bottom: 1px solid var(--border); vertical-align: middle; }
+.tbl tbody td { padding: var(--row-pad-y) var(--pad-card); border-bottom: 1px solid var(--border); vertical-align: middle; white-space: nowrap; }
+/* uzun matnli ustunlar (mahsulot, manzil, izoh, ism) o'rab tashlanadi */
+.tbl tbody td.muted { white-space: normal; }
+.tbl .cell-client b { white-space: normal; }
+/* o'rtacha ekranlarda ustunlar sig'ishi uchun kataklar ixchamlashadi */
+@media (max-width: 1500px) {
+  .tbl thead th, .tbl tbody td { padding-left: 14px; padding-right: 14px; }
+}
 .tbl tbody tr { cursor: pointer; transition: background .12s; }
 .tbl tbody tr:hover { background: var(--surface-2); }
 .tbl tbody tr:last-child td { border-bottom: 0; }
-.tbl .num { font-variant-numeric: tabular-nums; text-align: right; }
-.tbl .mono { font-family: var(--font-mono); font-size: 12.5px; }
+.tbl .num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.tbl .mono { font-family: var(--font-mono); font-size: 12.5px; white-space: nowrap; }
+
+/* ---- Telefon: jadval qatori kartaga aylanadi (ustun nomi td[data-label] dan) ---- */
+@media (max-width: 720px) {
+  table.tbl:not(.tbl-plain), .tbl:not(.tbl-plain) tbody { display: block; width: 100%; }
+  .tbl:not(.tbl-plain) thead { display: none; }
+  .tbl:not(.tbl-plain) tbody tr { display: flex; flex-direction: column; padding: 13px var(--pad-card); border-bottom: 1px solid var(--border); }
+  .tbl:not(.tbl-plain) tbody tr:last-child { border-bottom: 0; }
+  .tbl:not(.tbl-plain) tbody td {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    padding: 3.5px 0; border: 0; text-align: right; font-size: 13.5px;
+  }
+  .tbl:not(.tbl-plain) tbody td[data-label]::before {
+    content: attr(data-label); flex: none; text-align: left;
+    font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text-faint);
+  }
+  /* asosiy katak — qator sarlavhasi: yorliqsiz va doim tepada */
+  .tbl:not(.tbl-plain) tbody td.cell-main { order: -1; justify-content: flex-start; padding: 0 0 8px; text-align: left; }
+  .tbl:not(.tbl-plain) tbody td:empty { display: none; }
+  .table-wrap { overflow-x: visible; }
+
+  /* .tbl-plain — ixcham jadval telefonda ham jadval bo'lib qoladi */
+  .tbl.tbl-plain tbody td { padding: 10px 8px; font-size: 13px; }
+  .tbl.tbl-plain tbody td:first-child { padding-left: 16px; }
+  .tbl.tbl-plain tbody td:last-child { padding-right: 16px; }
+}
 
 .cell-client { display: flex; align-items: center; gap: 11px; }
 .cell-client .av { width: 34px; height: 34px; border-radius: 50%; flex: none; display: grid; place-items: center; font-weight: 700; font-size: 13px; color: #fff; }

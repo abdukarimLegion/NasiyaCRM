@@ -41,12 +41,12 @@ export default function ClientsPage() {
             <tbody>
               {data?.content.map((c) => (
                 <tr key={c.id} onClick={() => nav(`/clients/${c.id}`)}>
-                  <td><div className="cell-client"><Avatar name={c.fullName} size={30} /><b>{c.fullName}</b>
+                  <td className="cell-main"><div className="cell-client"><Avatar name={c.fullName} size={30} /><b>{c.fullName}</b>
                     {c.blacklisted && <span className="badge badge-danger">!</span>}</div></td>
-                  <td className="mono">{c.pinfl}</td>
-                  <td className="mono">{c.phone}</td>
-                  <td className="muted">{[c.region, c.district].filter(Boolean).join(', ')}</td>
-                  <td className="num">{fmtSom(c.monthlyIncome, i18n.language)}</td>
+                  <td className="mono" data-label={t('pinfl')}>{c.pinfl}</td>
+                  <td className="mono" data-label={t('phone')}>{c.phone}</td>
+                  <td className="muted" data-label={t('region')}>{[c.region, c.district].filter(Boolean).join(', ')}</td>
+                  <td className="num" data-label={t('income')}>{fmtSom(c.monthlyIncome, i18n.language)}</td>
                 </tr>
               ))}
             </tbody>

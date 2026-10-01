@@ -290,7 +290,7 @@ function QuoteCard({ quote }: { quote?: Quote }) {
         </dl>
       </div>
       <div className="table-wrap" style={{ maxHeight: 300, overflowY: 'auto' }}>
-        <table className="tbl">
+        <table className="tbl tbl-plain">
           <tbody>
             {quote.schedule.map((s) => (
               <tr key={s.seq} style={{ cursor: 'default' }}>

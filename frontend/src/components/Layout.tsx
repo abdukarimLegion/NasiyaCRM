@@ -43,6 +43,8 @@ export default function Layout() {
   const location = useLocation();
   const [dark, setDark] = useState(() => readPref('theme', 'light') === 'dark');
   const [collapsed, setCollapsed] = useState(false);
+  // Telefonda yon panel chiqib-kiradigan panel (drawer) bo'ladi
+  const [drawer, setDrawer] = useState(false);
   const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: () => api.get<Settings>('/api/settings') });
 
   useEffect(() => {
@@ -63,7 +65,7 @@ export default function Layout() {
 
   return (
     <div className="app" data-theme={dark ? 'dark' : 'light'} data-density="regular" data-layout="sidebar"
-      data-collapsed={collapsed}
+      data-collapsed={collapsed} data-drawer={drawer}
       style={{ height: '100%', ...(settings?.primaryColor ? { ['--accent-base' as string]: settings.primaryColor } : {}) }}>
       <aside className="sidebar">
         <div className="brand">
@@ -84,7 +86,7 @@ export default function Layout() {
                 <div className="nav-label">{t(grp.group)}</div>
                 {items.map((it) => (
                   <NavLink key={it.to} to={it.to} end={it.to === '/'} className="nav-item"
-                    style={{ textDecoration: 'none' }}>
+                    onClick={() => setDrawer(false)} style={{ textDecoration: 'none' }}>
                     <span className="nav-ic"><Icon name={it.icon} /></span>
                     <span>{t(it.key)}</span>
                   </NavLink>
@@ -108,9 +110,15 @@ export default function Layout() {
         </div>
       </aside>
 
+      <button className="drawer-scrim" aria-label={t('close')} onClick={() => setDrawer(false)} />
+
       <div className="app-main">
         <header className="topbar">
-          <button className="iconbtn" onClick={() => setCollapsed((c) => !c)} style={{ border: 0, background: 'transparent' }}>
+          <button className="iconbtn" style={{ border: 0, background: 'transparent' }}
+            onClick={() => {
+              if (window.matchMedia('(max-width: 880px)').matches) setDrawer((d) => !d);
+              else setCollapsed((c) => !c);
+            }}>
             <Icon name="menu" />
           </button>
           <div className="col" style={{ gap: 0 }}>

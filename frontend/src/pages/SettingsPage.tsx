@@ -77,7 +77,9 @@ function UsersCard() {
           <tbody>
             {users.data?.map((u) => (
               <tr key={u.id} onClick={() => setEdit(u)}>
-                <td><b>{u.fullName}</b></td><td className="mono">{u.username}</td><td>{t(`r_${u.role}`)}</td>
+                <td className="cell-main"><b>{u.fullName}</b></td>
+                <td className="mono" data-label={t('username')}>{u.username}</td>
+                <td data-label={t('role')}>{t(`r_${u.role}`)}</td>
               </tr>
             ))}
           </tbody>

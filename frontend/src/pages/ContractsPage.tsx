@@ -49,15 +49,15 @@ export default function ContractsPage() {
             <tbody>
               {data?.content.map((c) => (
                 <tr key={c.id} onClick={() => nav(`/contracts/${c.id}`)}>
-                  <td className="mono">{c.contractNo}</td>
-                  <td><div className="cell-client"><Avatar name={c.clientName} size={30} /><b>{c.clientName}</b></div></td>
-                  <td className="muted">{c.productName}</td>
-                  <td className="num">{fmtSom(c.salePrice, lang)}</td>
-                  <td className="num">{fmtSom(c.monthlyPayment, lang)}</td>
-                  <td>{c.termMonths} {t('months')}</td>
-                  <td>{fmtDate(c.createdAt, lang)}</td>
-                  <td><ContractStatusBadge status={c.status} /></td>
-                  <td><RiskPill cat={c.riskCategory} /></td>
+                  <td className="mono" data-label={t('contractNo')}>{c.contractNo}</td>
+                  <td className="cell-main"><div className="cell-client"><Avatar name={c.clientName} size={30} /><b>{c.clientName}</b></div></td>
+                  <td className="muted" data-label={t('product')}>{c.productName}</td>
+                  <td className="num" data-label={t('salePrice')}>{fmtSom(c.salePrice, lang)}</td>
+                  <td className="num" data-label={t('monthly')}>{fmtSom(c.monthlyPayment, lang)}</td>
+                  <td data-label={t('term')}>{c.termMonths} {t('months')}</td>
+                  <td data-label={t('date')}>{fmtDate(c.createdAt, lang)}</td>
+                  <td data-label={t('status')}><ContractStatusBadge status={c.status} /></td>
+                  <td data-label={t('risk')}><RiskPill cat={c.riskCategory} /></td>
                 </tr>
               ))}
             </tbody>

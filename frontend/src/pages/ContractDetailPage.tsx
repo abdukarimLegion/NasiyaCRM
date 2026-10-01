@@ -51,11 +51,11 @@ export default function ContractDetailPage() {
               <tbody>
                 {c.schedule.map((s) => (
                   <tr key={s.id} style={{ cursor: 'default' }}>
-                    <td className="faint">{s.seq}</td>
-                    <td>{fmtDate(s.dueDate, lang)}</td>
-                    <td className="num">{fmtSom(s.amount, lang)}</td>
-                    <td className="num">{fmtSom(s.paidAmount, lang)}</td>
-                    <td><ScheduleStatusBadge status={s.status} /></td>
+                    <td className="faint hide-sm">{s.seq}</td>
+                    <td className="cell-main"><b>{fmtDate(s.dueDate, lang)}</b></td>
+                    <td className="num" data-label={t('amount')}>{fmtSom(s.amount, lang)}</td>
+                    <td className="num" data-label={t('paid')}>{fmtSom(s.paidAmount, lang)}</td>
+                    <td data-label={t('status')}><ScheduleStatusBadge status={s.status} /></td>
                   </tr>
                 ))}
               </tbody>
