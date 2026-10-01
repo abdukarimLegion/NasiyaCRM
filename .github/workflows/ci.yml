@@ -1,10 +1,10 @@
 name: CI
 
+# master/main ga push bo'lganda CI deploy.yml ichidan chaqiriladi (ikki marta ishlamasligi uchun).
 on:
-  push:
-    branches: [main]
   pull_request:
-    branches: [main]
+    branches: [master, main]
+  workflow_call:
 
 jobs:
   backend:

@@ -1,17 +1,26 @@
 name: Deploy
 
-# Qo'lda ishga tushiriladi yoki v* tegi qo'yilganda.
-# Mijoz serveriga chiqadi, shuning uchun har push'da avtomatik ishlamaydi.
+# master (yoki main) ga push bo'lganda: testlar -> image'lar ghcr.io ga -> VPS da yangilash.
+# Qo'lda ham ishga tushirish mumkin (Actions -> Deploy -> Run workflow).
 on:
-  workflow_dispatch:
   push:
-    tags: ['v*']
+    branches: [master, main]
+  workflow_dispatch:
+
+# Bir vaqtda faqat bitta deploy; navbatdagisi oldingisini bekor qilmaydi.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
 
 jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
   images:
+    needs: ci
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -43,8 +52,8 @@ jobs:
           context: ./backend
           push: true
           tags: ${{ steps.names.outputs.backend }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
 
       - name: Frontend image
         uses: docker/build-push-action@v6
@@ -52,86 +61,66 @@ jobs:
           context: ./frontend
           push: true
           tags: ${{ steps.names.outputs.frontend }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
 
   deploy:
     needs: images
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      contents: read
+      packages: read
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+      VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+      SSHPASS: ${{ secrets.VPS_PASSWORD }}   # sshpass -e shu o'zgaruvchidan o'qiydi
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/nasiya' }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: SSH kalitni sozlash
-        env:
-          SSH_KEY: ${{ secrets.SSH_KEY }}
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_PORT: ${{ secrets.SSH_PORT }}
+      - name: SSH (parol bilan) sozlash
         run: |
+          test -n "$VPS_HOST" && test -n "$VPS_USER" && test -n "$SSHPASS" \
+            || { echo "VPS_HOST / VPS_USER / VPS_PASSWORD secret'lari berilmagan"; exit 1; }
+          sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
-          chmod 600 ~/.ssh/id_deploy
-          ssh-keyscan -p "${SSH_PORT:-22}" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -p "$VPS_PORT" -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          cat > ~/.ssh/config <<EOF
+          Host vps
+            HostName $VPS_HOST
+            User $VPS_USER
+            Port $VPS_PORT
+            PubkeyAuthentication no
+            PreferredAuthentications password,keyboard-interactive
+            ServerAliveInterval 30
+          EOF
+          sshpass -e ssh vps 'docker --version && docker compose version'
 
-      - name: Compose fayllarini serverga ko'chirish
+      - name: Fayllarni serverga ko'chirish
         env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_USER: ${{ secrets.SSH_USER }}
-          SSH_PORT: ${{ secrets.SSH_PORT }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          ENV_FILE: ${{ secrets.ENV_FILE }}
         run: |
-          path="${DEPLOY_PATH:-/opt/nasiya}"
-          ssh -i ~/.ssh/id_deploy -p "${SSH_PORT:-22}" "$SSH_USER@$SSH_HOST" \
-            "mkdir -p '$path/deploy' '$path/backups'"
-          scp -i ~/.ssh/id_deploy -P "${SSH_PORT:-22}" \
-            docker-compose.prod.yml "$SSH_USER@$SSH_HOST:$path/"
-          scp -i ~/.ssh/id_deploy -P "${SSH_PORT:-22}" \
-            deploy/backup.sh deploy/restore.sh "$SSH_USER@$SSH_HOST:$path/deploy/"
+          sshpass -e ssh vps "mkdir -p '$DEPLOY_PATH/deploy' '$DEPLOY_PATH/backups'"
+          sshpass -e scp docker-compose.prod.yml "vps:$DEPLOY_PATH/"
+          sshpass -e scp deploy/backup.sh deploy/restore.sh deploy/remote-deploy.sh "vps:$DEPLOY_PATH/deploy/"
+          # ENV_FILE secret berilgan bo'lsa, serverdagi .env shu bilan almashtiriladi
+          if [ -n "$ENV_FILE" ]; then
+            printf '%s\n' "$ENV_FILE" | sshpass -e ssh vps \
+              "umask 077 && cat > '$DEPLOY_PATH/.env.tmp' && mv '$DEPLOY_PATH/.env.tmp' '$DEPLOY_PATH/.env'"
+            echo ".env ENV_FILE secret'idan yangilandi"
+          fi
 
-      - name: Image'larni tortib, qayta ishga tushirish
+      - name: Yangilash va sog'lomlik tekshiruvi
         env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_USER: ${{ secrets.SSH_USER }}
-          SSH_PORT: ${{ secrets.SSH_PORT }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           BACKEND_IMAGE: ${{ needs.images.outputs.backend }}
           FRONTEND_IMAGE: ${{ needs.images.outputs.frontend }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          path="${DEPLOY_PATH:-/opt/nasiya}"
-          ssh -i ~/.ssh/id_deploy -p "${SSH_PORT:-22}" "$SSH_USER@$SSH_HOST" \
-            BACKEND_IMAGE="$BACKEND_IMAGE" FRONTEND_IMAGE="$FRONTEND_IMAGE" \
-            GHCR_TOKEN="$GHCR_TOKEN" GHCR_USER="${{ github.actor }}" DEPLOY_PATH="$path" \
-            'bash -euo pipefail -s' <<'REMOTE'
-          cd "$DEPLOY_PATH"
-          test -f .env || { echo ".env topilmadi: $DEPLOY_PATH/.env ni yarating"; exit 1; }
-          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
-          export BACKEND_IMAGE FRONTEND_IMAGE
-          docker compose -f docker-compose.prod.yml pull
-          docker compose -f docker-compose.prod.yml up -d
-          docker logout ghcr.io
-          docker image prune -f
-          REMOTE
-
-      - name: Sog'lomlik tekshiruvi
-        env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_USER: ${{ secrets.SSH_USER }}
-          SSH_PORT: ${{ secrets.SSH_PORT }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-        run: |
-          path="${DEPLOY_PATH:-/opt/nasiya}"
-          ssh -i ~/.ssh/id_deploy -p "${SSH_PORT:-22}" "$SSH_USER@$SSH_HOST" \
-            DEPLOY_PATH="$path" 'bash -euo pipefail -s' <<'REMOTE'
-          cd "$DEPLOY_PATH"
-          for i in $(seq 1 30); do
-            if docker compose -f docker-compose.prod.yml exec -T backend \
-                 sh -c 'curl -fsS http://localhost:8080/actuator/health' | grep -q '"status":"UP"'; then
-              echo "Backend UP"; exit 0
-            fi
-            sleep 5
-          done
-          echo "Backend 150 soniyada ko'tarilmadi:"
-          docker compose -f docker-compose.prod.yml logs --tail 60 backend
-          exit 1
-          REMOTE
+          printf '%s\n' "$GHCR_TOKEN" | sshpass -e ssh vps \
+            "DEPLOY_PATH=$(printf %q "$DEPLOY_PATH") \
+             BACKEND_IMAGE=$(printf %q "$BACKEND_IMAGE") \
+             FRONTEND_IMAGE=$(printf %q "$FRONTEND_IMAGE") \
+             GHCR_USER=$(printf %q "${{ github.actor }}") \
+             bash $(printf %q "$DEPLOY_PATH/deploy/remote-deploy.sh")"

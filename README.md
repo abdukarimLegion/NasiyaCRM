@@ -54,30 +54,51 @@ docker compose up -d --build
 
 Baza migratsiyalari (Flyway) backend ishga tushganda avtomatik bajariladi.
 
-## 1.1. CI/CD (GitHub Actions)
+## 1.1. CI/CD (GitHub Actions) — VPS ga avtomatik deploy
 
 | Workflow | Qachon | Nima qiladi |
 |---|---|---|
-| `.github/workflows/ci.yml` | har push va PR (`main`) | backend `./gradlew build` (testlar bilan), frontend `lint` + `tsc` + `vite build` |
-| `.github/workflows/deploy.yml` | qo'lda (*Run workflow*) yoki `v*` tegi | backend/frontend image'larini yig'ib `ghcr.io` ga yuklaydi, serverga SSH orqali chiqib yangilaydi va sog'lomligini tekshiradi |
+| `.github/workflows/ci.yml` | PR (`master`/`main`) va deploy ichida | backend `./gradlew build` (testlar bilan), frontend `lint` + `tsc` + `vite build` |
+| `.github/workflows/deploy.yml` | **`master` (yoki `main`) ga har push**, yoki qo'lda (*Run workflow*) | CI → image'larni `ghcr.io` ga yuklaydi → VPS ga SSH orqali chiqib yangilaydi → backend sog'lomligini tekshiradi |
 
-Deploy mijoz serveriga chiqadi, shuning uchun **har push'da avtomatik ishlamaydi**.
-Relizni chiqarish: `git tag v1.0.0 && git push origin v1.0.0`.
+**Serverdagi mavjud servislar va portlarga tegilmaydi** (`deploy/remote-deploy.sh`):
 
-**Repo secret'lari** (Settings → Secrets and variables → Actions):
+- faqat `nasiya` compose loyihasi yangilanadi (`nasiya-*` konteynerlar, `nasiya_default` tarmoq,
+  `nasiya_pgdata` volume); `docker compose down`, `system prune`, `--remove-orphans` ishlatilmaydi;
+- tashqariga faqat frontend ochiladi, standart port **8090** (80 emas); Postgres va backend portlari
+  umuman ochilmaydi;
+- deploy'dan oldin `HTTP_PORT` tekshiriladi: boshqa dastur yoki konteyner band qilgan bo'lsa,
+  **hech narsa to'xtatilmaydi** — deploy xato bilan to'xtaydi va portni kim ushlab turgani ko'rsatiladi;
+- `ghcr.io` login vaqtinchalik docker config'da qilinadi, serverdagi `~/.docker/config.json` o'zgarmaydi;
+- faqat shu loyihaning eski image'lari o'chiriladi (oxirgi 3 tasi qoladi).
+
+**Repo secret'lari** (Settings → Secrets and variables → Actions). SSH parol bilan ulanadi (`sshpass`):
 
 | Secret | Izoh |
 |---|---|
-| `SSH_HOST` | server IP yoki domen |
-| `SSH_USER` | deploy foydalanuvchisi (docker guruhida bo'lsin) |
-| `SSH_KEY` | shu foydalanuvchining **private** SSH kaliti (to'liq matn) |
-| `SSH_PORT` | ixtiyoriy, standart `22` |
+| `VPS_HOST` | VPS IP yoki domen |
+| `VPS_USER` | SSH foydalanuvchi (`root` yoki `docker` guruhidagi user) |
+| `VPS_PASSWORD` | shu foydalanuvchining SSH paroli |
+| `VPS_PORT` | ixtiyoriy, standart `22` |
 | `DEPLOY_PATH` | ixtiyoriy, standart `/opt/nasiya` |
+| `ENV_FILE` | ixtiyoriy: `.env` ning to'liq matni. Berilsa, har deploy'da serverdagi `.env` shu bilan yoziladi |
 
-**Serverni bir martalik tayyorlash:** Docker o'rnatilgan bo'lsin, `DEPLOY_PATH` papkasini
-yaratib, ichiga to'ldirilgan `.env` faylini qo'ying (`.env.example` dan). Qolganini
-(`docker-compose.prod.yml`, `deploy/*.sh`) workflow o'zi ko'chiradi. Serverda build
-qilinmaydi — tayyor image'lar `ghcr.io` dan tortiladi.
+**VPS ni bir martalik tayyorlash** (`root` bo'lmasa, avval `sudo mkdir -p /opt/nasiya && sudo chown $USER /opt/nasiya`
+va `sudo usermod -aG docker $USER`):
+
+```bash
+ss -ltn                         # band portlarni ko'ring
+mkdir -p /opt/nasiya
+nano /opt/nasiya/.env           # .env.example asosida; HTTP_PORT ga BO'SH port yozing
+```
+
+`.env` da kamida: `DB_PASSWORD`, `APP_JWT_SECRET`, `APP_ADMIN_PASSWORD`, `HTTP_PORT` (masalan `8090`)
+va `APP_CORS_ORIGINS=http://VPS_IP:8090`. Tizim: `http://VPS_IP:8090`.
+
+Serverda allaqachon nginx/caddy (80/443) ishlayotgan bo'lsa, `.env` ga `HTTP_BIND=127.0.0.1` qo'ying
+va mavjud nginx'da domen uchun `proxy_pass http://127.0.0.1:8090;` qo'shing — shunda 8090 tashqariga
+ochilmaydi. Qolganini (`docker-compose.prod.yml`, `deploy/*.sh`) workflow o'zi ko'chiradi;
+serverda build qilinmaydi — tayyor image'lar `ghcr.io` dan tortiladi.
 
 ## 2. Dasturchi uchun: lokal ishga tushirish
 
