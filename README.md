@@ -8,7 +8,9 @@ nasiya CRM/
 ├── backend/            Java 21 + Spring Boot 3.5 + Gradle (Kotlin DSL) + PostgreSQL 16 + Flyway
 ├── frontend/           React 19 + TypeScript + Vite (prototip dizayni)
 ├── deploy/             zaxira nusxa olish va tiklash skriptlari
-├── docker-compose.yml  db + backend + frontend(nginx) + backup
+├── .github/workflows/  CI (build + test) va deploy (ghcr.io + SSH)
+├── docker-compose.yml  db + backend + frontend(nginx) + backup (lokal build)
+├── docker-compose.prod.yml  serverda: ghcr.io dan tayyor image'lar
 └── .env.example        sozlamalar namunasi
 ```
 
@@ -51,6 +53,31 @@ docker compose up -d --build
 ```
 
 Baza migratsiyalari (Flyway) backend ishga tushganda avtomatik bajariladi.
+
+## 1.1. CI/CD (GitHub Actions)
+
+| Workflow | Qachon | Nima qiladi |
+|---|---|---|
+| `.github/workflows/ci.yml` | har push va PR (`main`) | backend `./gradlew build` (testlar bilan), frontend `lint` + `tsc` + `vite build` |
+| `.github/workflows/deploy.yml` | qo'lda (*Run workflow*) yoki `v*` tegi | backend/frontend image'larini yig'ib `ghcr.io` ga yuklaydi, serverga SSH orqali chiqib yangilaydi va sog'lomligini tekshiradi |
+
+Deploy mijoz serveriga chiqadi, shuning uchun **har push'da avtomatik ishlamaydi**.
+Relizni chiqarish: `git tag v1.0.0 && git push origin v1.0.0`.
+
+**Repo secret'lari** (Settings → Secrets and variables → Actions):
+
+| Secret | Izoh |
+|---|---|
+| `SSH_HOST` | server IP yoki domen |
+| `SSH_USER` | deploy foydalanuvchisi (docker guruhida bo'lsin) |
+| `SSH_KEY` | shu foydalanuvchining **private** SSH kaliti (to'liq matn) |
+| `SSH_PORT` | ixtiyoriy, standart `22` |
+| `DEPLOY_PATH` | ixtiyoriy, standart `/opt/nasiya` |
+
+**Serverni bir martalik tayyorlash:** Docker o'rnatilgan bo'lsin, `DEPLOY_PATH` papkasini
+yaratib, ichiga to'ldirilgan `.env` faylini qo'ying (`.env.example` dan). Qolganini
+(`docker-compose.prod.yml`, `deploy/*.sh`) workflow o'zi ko'chiradi. Serverda build
+qilinmaydi — tayyor image'lar `ghcr.io` dan tortiladi.
 
 ## 2. Dasturchi uchun: lokal ishga tushirish
 
