@@ -72,42 +72,42 @@ jobs:
       contents: read
       packages: read
     env:
-      SSH_HOST: ${{ secrets.SSH_HOST }}
-      SSH_USER: ${{ secrets.SSH_USER }}
-      SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+      VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+      SSHPASS: ${{ secrets.VPS_PASSWORD }}   # sshpass -e shu o'zgaruvchidan o'qiydi
       DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/nasiya' }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: SSH kalitni sozlash
-        env:
-          SSH_KEY: ${{ secrets.SSH_KEY }}
+      - name: SSH (parol bilan) sozlash
         run: |
-          test -n "$SSH_HOST" && test -n "$SSH_USER" && test -n "$SSH_KEY" \
-            || { echo "SSH_HOST / SSH_USER / SSH_KEY secret'lari berilmagan"; exit 1; }
+          test -n "$VPS_HOST" && test -n "$VPS_USER" && test -n "$SSHPASS" \
+            || { echo "VPS_HOST / VPS_USER / VPS_PASSWORD secret'lari berilmagan"; exit 1; }
+          sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
-          chmod 600 ~/.ssh/id_deploy
-          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -p "$VPS_PORT" -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
           cat > ~/.ssh/config <<EOF
           Host vps
-            HostName $SSH_HOST
-            User $SSH_USER
-            Port $SSH_PORT
-            IdentityFile ~/.ssh/id_deploy
+            HostName $VPS_HOST
+            User $VPS_USER
+            Port $VPS_PORT
+            PubkeyAuthentication no
+            PreferredAuthentications password,keyboard-interactive
             ServerAliveInterval 30
           EOF
+          sshpass -e ssh vps 'docker --version && docker compose version'
 
       - name: Fayllarni serverga ko'chirish
         env:
           ENV_FILE: ${{ secrets.ENV_FILE }}
         run: |
-          ssh vps "mkdir -p '$DEPLOY_PATH/deploy' '$DEPLOY_PATH/backups'"
-          scp docker-compose.prod.yml "vps:$DEPLOY_PATH/"
-          scp deploy/backup.sh deploy/restore.sh deploy/remote-deploy.sh "vps:$DEPLOY_PATH/deploy/"
+          sshpass -e ssh vps "mkdir -p '$DEPLOY_PATH/deploy' '$DEPLOY_PATH/backups'"
+          sshpass -e scp docker-compose.prod.yml "vps:$DEPLOY_PATH/"
+          sshpass -e scp deploy/backup.sh deploy/restore.sh deploy/remote-deploy.sh "vps:$DEPLOY_PATH/deploy/"
           # ENV_FILE secret berilgan bo'lsa, serverdagi .env shu bilan almashtiriladi
           if [ -n "$ENV_FILE" ]; then
-            printf '%s\n' "$ENV_FILE" | ssh vps \
+            printf '%s\n' "$ENV_FILE" | sshpass -e ssh vps \
               "umask 077 && cat > '$DEPLOY_PATH/.env.tmp' && mv '$DEPLOY_PATH/.env.tmp' '$DEPLOY_PATH/.env'"
             echo ".env ENV_FILE secret'idan yangilandi"
           fi
@@ -118,7 +118,7 @@ jobs:
           FRONTEND_IMAGE: ${{ needs.images.outputs.frontend }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          printf '%s\n' "$GHCR_TOKEN" | ssh vps \
+          printf '%s\n' "$GHCR_TOKEN" | sshpass -e ssh vps \
             "DEPLOY_PATH=$(printf %q "$DEPLOY_PATH") \
              BACKEND_IMAGE=$(printf %q "$BACKEND_IMAGE") \
              FRONTEND_IMAGE=$(printf %q "$FRONTEND_IMAGE") \

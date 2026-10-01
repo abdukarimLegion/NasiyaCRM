@@ -72,29 +72,24 @@ Baza migratsiyalari (Flyway) backend ishga tushganda avtomatik bajariladi.
 - `ghcr.io` login vaqtinchalik docker config'da qilinadi, serverdagi `~/.docker/config.json` o'zgarmaydi;
 - faqat shu loyihaning eski image'lari o'chiriladi (oxirgi 3 tasi qoladi).
 
-**Repo secret'lari** (Settings → Secrets and variables → Actions):
+**Repo secret'lari** (Settings → Secrets and variables → Actions). SSH parol bilan ulanadi (`sshpass`):
 
 | Secret | Izoh |
 |---|---|
-| `SSH_HOST` | VPS IP yoki domen |
-| `SSH_USER` | deploy foydalanuvchisi (`docker` guruhida bo'lsin) |
-| `SSH_KEY` | shu foydalanuvchining **private** SSH kaliti (to'liq matn) |
-| `SSH_PORT` | ixtiyoriy, standart `22` |
+| `VPS_HOST` | VPS IP yoki domen |
+| `VPS_USER` | SSH foydalanuvchi (`root` yoki `docker` guruhidagi user) |
+| `VPS_PASSWORD` | shu foydalanuvchining SSH paroli |
+| `VPS_PORT` | ixtiyoriy, standart `22` |
 | `DEPLOY_PATH` | ixtiyoriy, standart `/opt/nasiya` |
 | `ENV_FILE` | ixtiyoriy: `.env` ning to'liq matni. Berilsa, har deploy'da serverdagi `.env` shu bilan yoziladi |
 
-**VPS ni bir martalik tayyorlash:**
+**VPS ni bir martalik tayyorlash** (`root` bo'lmasa, avval `sudo mkdir -p /opt/nasiya && sudo chown $USER /opt/nasiya`
+va `sudo usermod -aG docker $USER`):
 
 ```bash
-# 1) deploy uchun SSH kalit (lokal kompyuterda), public qismini VPS ga qo'shing
-ssh-keygen -t ed25519 -f nasiya_deploy -N ""
-ssh-copy-id -i nasiya_deploy.pub USER@VPS_IP      # private qismi -> SSH_KEY secret
-
-# 2) VPS da: papka va .env
-sudo mkdir -p /opt/nasiya && sudo chown $USER /opt/nasiya
-sudo usermod -aG docker $USER                     # agar hali docker guruhida bo'lmasa
-ss -ltn                                           # band portlarni ko'ring
-nano /opt/nasiya/.env                             # .env.example asosida; HTTP_PORT ga BO'SH port yozing
+ss -ltn                         # band portlarni ko'ring
+mkdir -p /opt/nasiya
+nano /opt/nasiya/.env           # .env.example asosida; HTTP_PORT ga BO'SH port yozing
 ```
 
 `.env` da kamida: `DB_PASSWORD`, `APP_JWT_SECRET`, `APP_ADMIN_PASSWORD`, `HTTP_PORT` (masalan `8088`)
