@@ -1,0 +1,15 @@
+.env
+backups/*
+!backups/.gitkeep
+.DS_Store
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Build
+backend/build/
+backend/.gradle/
+frontend/node_modules/
+frontend/dist/

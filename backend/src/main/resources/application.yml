@@ -1,0 +1,77 @@
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: installment-platform
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/nasiya}
+    username: ${DB_USER:nasiya}
+    password: ${DB_PASSWORD:nasiya}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate          # sxemani faqat Flyway boshqaradi
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC
+  flyway:
+    locations: classpath:db/migration
+    # dev'da yuklangan demo migratsiya (V100) prod'da topilmasa xato bermasin
+    ignore-migration-patterns: "*:missing"
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+  task:
+    scheduling:
+      pool:
+        size: 2
+
+app:
+  timezone: Asia/Tashkent
+  cors-origins: ${APP_CORS_ORIGINS:http://localhost:5173}
+  jwt:
+    # Kamida 32 belgi. Prod'da .env orqali MAJBURIY beriladi.
+    secret: ${APP_JWT_SECRET:dev-only-secret-change-me-dev-only-secret-change-me}
+    ttl-hours: ${APP_JWT_TTL_HOURS:12}
+  bootstrap-admin:
+    username: ${APP_ADMIN_USERNAME:admin}
+    password: ${APP_ADMIN_PASSWORD:}
+  sms:
+    provider: ${APP_SMS_PROVIDER:log}   # log | eskiz
+    eskiz:
+      base-url: https://notify.eskiz.uz/api
+      email: ${ESKIZ_EMAIL:}
+      password: ${ESKIZ_PASSWORD:}
+      from: ${ESKIZ_FROM:4546}
+  telegram:
+    bot-token: ${APP_TELEGRAM_BOT_TOKEN:}   # bo'sh bo'lsa Telegram xabarlari o'chiq
+  jobs:
+    # Har kuni 09:00 (Toshkent) — kechikishlarni yangilash va eslatmalar
+    daily-cron: ${APP_DAILY_CRON:0 0 9 * * *}
+
+springdoc:
+  swagger-ui:
+    path: /api/docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  flyway:
+    locations: classpath:db/migration,classpath:db/demo
+  jpa:
+    show-sql: false
+app:
+  bootstrap-admin:
+    password: ${APP_ADMIN_PASSWORD:admin123}

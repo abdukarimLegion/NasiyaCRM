@@ -1,0 +1,133 @@
+/* Loyiha-maxsus qo'shimchalar (prototip dizayn tizimi ustidan) */
+html, body, #root { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-ui); }
+a { color: inherit; }
+/* ============================================================
+   Login
+   ============================================================ */
+.login { min-height: 100%; display: grid; grid-template-columns: 1.1fr 1fr; background: var(--bg); }
+
+.login-aside {
+  position: relative; overflow: hidden; isolation: isolate;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 40px;
+  padding: 52px 56px;
+  color: oklch(0.97 0.015 150);
+  background: linear-gradient(155deg, oklch(0.46 0.095 160) 0%, oklch(0.33 0.075 163) 52%, oklch(0.25 0.05 166) 100%);
+}
+/* islomiy geometrik panjara */
+.login-aside::before {
+  content: ""; position: absolute; inset: -10%; z-index: -1;
+  background-image:
+    repeating-linear-gradient(45deg, transparent 0 26px, oklch(1 0 0 / .07) 26px 27px),
+    repeating-linear-gradient(-45deg, transparent 0 26px, oklch(1 0 0 / .07) 26px 27px);
+  mask-image: radial-gradient(120% 85% at 18% 12%, #000 18%, transparent 72%);
+}
+.login-aside::after {
+  content: ""; position: absolute; z-index: -1; width: 520px; height: 520px; right: -230px; bottom: -260px;
+  border-radius: 50%; background: radial-gradient(circle, oklch(0.74 0.1 84 / .22), transparent 68%);
+}
+.login-brand { display: flex; align-items: center; gap: 14px; }
+.login-brand .brand-mark {
+  width: 50px; height: 50px; border-radius: 15px; font-size: 26px;
+  background: oklch(1 0 0 / .14); color: oklch(0.98 0.02 90);
+  box-shadow: inset 0 0 0 1px oklch(0.82 0.09 84 / .55);
+}
+.login-brand .brand-mark::after { display: none; }
+.login-brand b { font-family: var(--font-display); font-size: 23px; font-weight: 600; line-height: 1.1; }
+.login-brand span { font-size: 11.5px; letter-spacing: .16em; text-transform: uppercase; color: oklch(0.88 0.04 150 / .72); }
+
+.login-pitch h2 {
+  font-family: var(--font-display); font-size: clamp(27px, 2.5vw, 36px); font-weight: 600;
+  line-height: 1.22; letter-spacing: -.01em; margin: 0 0 28px; max-width: 22ch;
+}
+.login-feats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 15px; }
+.login-feats li { display: flex; align-items: flex-start; gap: 12px; font-size: 14.5px; color: oklch(0.93 0.025 150 / .88); max-width: 42ch; }
+.login-feats i {
+  width: 26px; height: 26px; flex: none; border-radius: 8px; display: grid; place-items: center;
+  background: oklch(1 0 0 / .13); color: oklch(0.86 0.08 84);
+}
+.login-foot { margin: 0; font-size: 12.5px; color: oklch(0.88 0.03 150 / .55); }
+
+.login-main { position: relative; display: grid; place-items: center; padding: 32px 24px; }
+.login-lang { position: absolute; top: 24px; right: 26px; }
+.login-card { width: 100%; max-width: 408px; display: flex; flex-direction: column; gap: 17px; }
+.login-mark-sm { display: none; }
+.login-card h1 { font-family: var(--font-display); font-size: 30px; font-weight: 600; letter-spacing: -.01em; margin: 0; }
+.login-card .login-sub { margin: -11px 0 5px; color: var(--text-muted); font-size: 14px; }
+.login-err {
+  display: flex; align-items: center; gap: 9px; padding: 11px 14px; border-radius: var(--radius-sm);
+  background: var(--danger-soft); color: var(--danger); font-size: 13.5px; font-weight: 500;
+  border: 1px solid oklch(from var(--danger) 0.86 calc(c * 0.5) h);
+}
+.input-wrap { position: relative; display: flex; align-items: center; }
+.input-wrap > svg { position: absolute; left: 14px; color: var(--text-faint); pointer-events: none; }
+.input-wrap .input { padding-left: 42px; }
+.input-wrap .input[data-eye="true"] { padding-right: 44px; }
+.input-eye {
+  position: absolute; right: 6px; width: 32px; height: 32px; border: 0; border-radius: 8px;
+  background: transparent; color: var(--text-faint); display: grid; place-items: center; cursor: pointer;
+}
+.input-eye:hover { background: var(--surface-2); color: var(--text); }
+
+@media (max-width: 960px) {
+  .login { grid-template-columns: 1fr; }
+  .login-aside { display: none; }
+  .login-mark-sm { display: grid; margin-bottom: 6px; }
+  .login-main { align-content: center; }
+}
+/* ============================================================
+   Dashboard
+   ============================================================ */
+.dash-hero { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.dash-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px; }
+@media (max-width: 1100px) { .dash-hero, .dash-mini { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 620px) { .dash-hero, .dash-mini { grid-template-columns: 1fr; } }
+.dash-split { display: grid; grid-template-columns: 1.5fr 1fr; gap: 22px; align-items: stretch; margin-top: 22px; }
+@media (max-width: 1040px) { .dash-split { grid-template-columns: 1fr; } }
+.dash-split > .card { display: flex; flex-direction: column; }
+.dash-split > .card > .card-body { flex: 1; }
+.dash-list { display: flex; flex-direction: column; }
+.dash-row {
+  display: flex; align-items: center; gap: 12px; padding: 13px var(--pad-card);
+  border-bottom: 1px solid var(--border); text-align: left; width: 100%;
+  background: transparent; border-left: 0; border-right: 0; border-top: 0; cursor: pointer;
+  font: inherit; color: inherit; transition: background .12s;
+}
+.dash-row:last-child { border-bottom: 0; }
+.dash-row:hover { background: var(--surface-2); }
+.dash-row .dr-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.dash-row .dr-main b { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dash-row .dr-main span { font-size: 12px; color: var(--text-faint); }
+.dash-row .dr-end { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; white-space: nowrap; }
+.dash-row .dr-end b { font-family: var(--font-display); font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ---- Tor ekran: yon panel chiqib-kiradigan panelga aylanadi.
+   Topbar'dagi "menu" tugmasi (data-collapsed) uni ochadi. ---- */
+@media (max-width: 880px) {
+  .app[data-layout="sidebar"] { grid-template-columns: 1fr; }
+  .sidebar {
+    position: fixed; top: 0; bottom: 0; left: 0; width: 272px; z-index: 60;
+    transform: translateX(-100%); transition: transform .25s cubic-bezier(.4,0,.2,1);
+    box-shadow: var(--shadow-lg);
+  }
+  .app[data-collapsed="true"] .sidebar { transform: none; }
+  .app[data-collapsed="true"] .brand-text,
+  .app[data-collapsed="true"] .user-chip .u-meta { display: flex; }
+  .app[data-collapsed="true"] .nav-label { opacity: 1; height: auto; padding: 16px 12px 6px; }
+  .app[data-collapsed="true"] .nav-item { justify-content: flex-start; }
+  .app[data-collapsed="true"] .nav-item span:not(.nav-ic),
+  .app[data-collapsed="true"] .nav-badge { display: inline-flex; }
+  .topbar { padding: 0 16px; gap: 10px; min-height: 60px; }
+  .topbar .page-title { font-size: 19px; }
+  .page { padding: 18px 16px 48px; }
+  .card-head { flex-wrap: wrap; }
+}
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
+@media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+.pager { display: flex; gap: 8px; align-items: center; justify-content: flex-end; padding: 12px var(--pad-card); }
+.check-row { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; }
+.check-row input { width: 18px; height: 18px; accent-color: var(--primary); }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 8px 18px; font-size: 14px; }
+.kv dt { color: var(--text-muted); }
+.kv dd { margin: 0; font-weight: 600; text-align: right; }
