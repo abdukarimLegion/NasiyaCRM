@@ -100,6 +100,19 @@ va mavjud nginx'da domen uchun `proxy_pass http://127.0.0.1:8090;` qo'shing — 
 ochilmaydi. Qolganini (`docker-compose.prod.yml`, `deploy/*.sh`) workflow o'zi ko'chiradi;
 serverda build qilinmaydi — tayyor image'lar `ghcr.io` dan tortiladi.
 
+### Namoyish (demo) ma'lumotlari
+
+Serverdagi tizimni namoyish qilish uchun **Actions → "Demo ma'lumotlar" → Run workflow**:
+
+- `seed` — `deploy/seed/demo_seed.sql`: 32 mijoz, 16 mahsulot, oxirgi 6 oyga taqsimlangan **40 ta shartnoma**
+  (savdo narxi jami ~100 mln so'm), 72 ta to'lov (naqd, Click, Payme, karta, Uzum), kechikkan
+  shartnomalar va ular bo'yicha undiruvchi harakatlari. Sanalar ishga tushirilgan kunga nisbatan hisoblanadi.
+- `remove` — `deploy/seed/demo_remove.sql`: faqat shu demo yozuvlarni (to'lovlari bilan) o'chiradi.
+  Keyin haqiqiy shartnoma ochilgan demo mijoz/mahsulot qoldiriladi.
+
+> **Haqiqiy ishga tushishdan oldin `remove` qiling.** Demo mijozlarning telefon raqamlari tasodifiy;
+> `APP_SMS_PROVIDER=eskiz` yoqilsa, kunlik eslatmalar shu raqamlarga ketadi.
+
 ## 2. Dasturchi uchun: lokal ishga tushirish
 
 Kerak bo'ladi: JDK 21, Node 22, Docker. (Gradle kerak emas — `./gradlew` o'zi yuklab oladi.)
