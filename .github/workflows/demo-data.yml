@@ -1,0 +1,62 @@
+name: Demo ma'lumotlar
+
+# Qo'lda: Actions -> "Demo ma'lumotlar" -> Run workflow.
+#   seed   — 40 ta namoyish shartnomasi (oxirgi 6 oy, ~100 mln so'm) yuklaydi
+#   remove — faqat shu demo ma'lumotlarni o'chiradi (haqiqiy ma'lumotlarga tegmaydi)
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "seed = yuklash, remove = o'chirish"
+        type: choice
+        options: [seed, remove]
+        default: seed
+
+# deploy bilan bir vaqtda ishlamasin
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+      VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+      SSHPASS: ${{ secrets.VPS_PASSWORD }}
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/nasiya' }}
+      SQL_FILE: ${{ inputs.action == 'remove' && 'demo_remove.sql' || 'demo_seed.sql' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: SSH (parol bilan) sozlash
+        run: |
+          test -n "$VPS_HOST" && test -n "$VPS_USER" && test -n "$SSHPASS" \
+            || { echo "VPS_HOST / VPS_USER / VPS_PASSWORD secret'lari berilmagan"; exit 1; }
+          sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          ssh-keyscan -p "$VPS_PORT" -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          cat > ~/.ssh/config <<EOF
+          Host vps
+            HostName $VPS_HOST
+            User $VPS_USER
+            Port $VPS_PORT
+            PubkeyAuthentication no
+            PreferredAuthentications password,keyboard-interactive
+            ServerAliveInterval 30
+          EOF
+
+      - name: SQL ni bazada bajarish
+        run: |
+          sshpass -e ssh vps "mkdir -p '$DEPLOY_PATH/deploy/seed'"
+          sshpass -e scp "deploy/seed/$SQL_FILE" "vps:$DEPLOY_PATH/deploy/seed/"
+          sshpass -e ssh vps "bash -euo pipefail -s" <<REMOTE
+          db=\$(docker ps -q -f label=com.docker.compose.project=nasiya -f label=com.docker.compose.service=db)
+          test -n "\$db" || { echo "nasiya db konteyneri topilmadi — avval deploy qiling"; exit 1; }
+          docker exec -i "\$db" sh -c 'psql -v ON_ERROR_STOP=1 -U "\$POSTGRES_USER" -d "\$POSTGRES_DB"' \
+            < '$DEPLOY_PATH/deploy/seed/$SQL_FILE'
+          REMOTE
