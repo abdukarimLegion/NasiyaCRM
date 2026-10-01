@@ -6,7 +6,7 @@
 #
 # Serverdagi boshqa loyihalar bilan to'qnashmaslik uchun:
 #   - loyiha nomi qat'iy "nasiya" (konteyner/tarmoq/volume nomlari nasiya_* bo'ladi);
-#   - tashqariga faqat frontend ochiladi va standart port 80 emas, 8088;
+#   - tashqariga faqat frontend ochiladi va standart port 80 emas, 8090;
 #   - HTTP_BIND=127.0.0.1 qilinsa, faqat serverdagi mavjud nginx/caddy orqali kiriladi.
 
 name: nasiya
@@ -56,7 +56,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-8088}:80"
+      - "${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-8090}:80"
 
   backup:
     image: postgres:16-alpine

@@ -65,7 +65,7 @@ Baza migratsiyalari (Flyway) backend ishga tushganda avtomatik bajariladi.
 
 - faqat `nasiya` compose loyihasi yangilanadi (`nasiya-*` konteynerlar, `nasiya_default` tarmoq,
   `nasiya_pgdata` volume); `docker compose down`, `system prune`, `--remove-orphans` ishlatilmaydi;
-- tashqariga faqat frontend ochiladi, standart port **8088** (80 emas); Postgres va backend portlari
+- tashqariga faqat frontend ochiladi, standart port **8090** (80 emas); Postgres va backend portlari
   umuman ochilmaydi;
 - deploy'dan oldin `HTTP_PORT` tekshiriladi: boshqa dastur yoki konteyner band qilgan bo'lsa,
   **hech narsa to'xtatilmaydi** — deploy xato bilan to'xtaydi va portni kim ushlab turgani ko'rsatiladi;
@@ -92,11 +92,11 @@ mkdir -p /opt/nasiya
 nano /opt/nasiya/.env           # .env.example asosida; HTTP_PORT ga BO'SH port yozing
 ```
 
-`.env` da kamida: `DB_PASSWORD`, `APP_JWT_SECRET`, `APP_ADMIN_PASSWORD`, `HTTP_PORT` (masalan `8088`)
-va `APP_CORS_ORIGINS=http://VPS_IP:8088`. Tizim: `http://VPS_IP:8088`.
+`.env` da kamida: `DB_PASSWORD`, `APP_JWT_SECRET`, `APP_ADMIN_PASSWORD`, `HTTP_PORT` (masalan `8090`)
+va `APP_CORS_ORIGINS=http://VPS_IP:8090`. Tizim: `http://VPS_IP:8090`.
 
 Serverda allaqachon nginx/caddy (80/443) ishlayotgan bo'lsa, `.env` ga `HTTP_BIND=127.0.0.1` qo'ying
-va mavjud nginx'da domen uchun `proxy_pass http://127.0.0.1:8088;` qo'shing — shunda 8088 tashqariga
+va mavjud nginx'da domen uchun `proxy_pass http://127.0.0.1:8090;` qo'shing — shunda 8090 tashqariga
 ochilmaydi. Qolganini (`docker-compose.prod.yml`, `deploy/*.sh`) workflow o'zi ko'chiradi;
 serverda build qilinmaydi — tayyor image'lar `ghcr.io` dan tortiladi.
 

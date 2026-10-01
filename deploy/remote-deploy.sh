@@ -24,7 +24,7 @@ compose() { docker compose -f docker-compose.prod.yml "$@"; }
 
 env_get() { { grep -E "^$1=" .env || true; } | tail -n1 | cut -d= -f2- | tr -d "\"' \r"; }
 HTTP_PORT="$(env_get HTTP_PORT)"
-HTTP_PORT="${HTTP_PORT:-8088}"
+HTTP_PORT="${HTTP_PORT:-8090}"
 
 # ---- 1. Port tekshiruvi: band bo'lsa boshqa servisni o'chirmaymiz, to'xtaymiz ----
 port_used_by_others() {
