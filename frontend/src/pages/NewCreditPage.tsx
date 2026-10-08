@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, qs } from '../api/client';
 import type {
-  Client, ContractDetails, Factor, Page, Product, Quote, QuoteRequest, ScoringRequest, ScoringResult, StopFactor,
+  ClientListItem, ContractDetails, Factor, Page, Product, Quote, QuoteRequest, ScoringRequest, ScoringResult, StopFactor,
 } from '../api/types';
 import { Avatar, Badge, Btn, Card, CardHead, ErrorBox, Field, Gauge, Icon } from '../components/ui';
 import { useAuth } from '../lib/auth';
@@ -30,7 +30,7 @@ export default function NewCreditPage() {
   const [query, setQuery] = useState('');
   const clients = useQuery({
     queryKey: ['clients', query, 0],
-    queryFn: () => api.get<Page<Client>>(`/api/clients${qs({ q: query, size: 30 })}`),
+    queryFn: () => api.get<Page<ClientListItem>>(`/api/clients${qs({ q: query, size: 30 })}`),
   });
 
   // 2-3. scoring

@@ -56,6 +56,36 @@ export interface Client {
 
 export type ClientRequest = Omit<Client, 'id' | 'createdAt'>;
 
+/** /api/clients ro'yxat qatori: asosiy ma'lumot + nasiya ko'rsatkichlari */
+export interface ClientListItem {
+  id: number;
+  fullName: string;
+  pinfl: string;
+  phone: string;
+  region?: string;
+  district?: string;
+  workplace?: string;
+  monthlyIncome?: number;
+  blacklisted: boolean;
+  createdAt: string;
+  openContracts: number;
+  activeDebt: number;
+  monthlyObligation: number;
+  hasLate: boolean;
+  lastScore?: number;
+  lastRisk?: RiskCategory;
+  creditLimit: number;
+}
+
+export interface ClientsSummary {
+  total: number;
+  withDebt: number;
+  lateClients: number;
+  avgScore?: number;
+  gradeAPct?: number;
+  totalDebt: number;
+}
+
 export interface ContractBrief {
   id: number;
   contractNo: string;

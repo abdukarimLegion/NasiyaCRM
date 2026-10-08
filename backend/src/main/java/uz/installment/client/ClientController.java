@@ -26,10 +26,15 @@ public class ClientController {
     private final ClientService service;
 
     @GetMapping
-    public PageResponse<ClientResponse> list(@RequestParam(required = false) String q,
-                                             @RequestParam(defaultValue = "0") int page,
-                                             @RequestParam(defaultValue = "20") int size) {
+    public PageResponse<ClientDtos.ClientListItem> list(@RequestParam(required = false) String q,
+                                                        @RequestParam(defaultValue = "0") int page,
+                                                        @RequestParam(defaultValue = "20") int size) {
         return service.search(q, page, size);
+    }
+
+    @GetMapping("/summary")
+    public ClientDtos.ClientsSummary summary() {
+        return service.summary();
     }
 
     @GetMapping("/{id}")
