@@ -411,5 +411,14 @@
   "claimBody3": "Yuqoridagilarga asosan so'raymiz:",
   "claimAsk1": "Javobgardan da'vogar foydasiga {{remaining}} qarzni undirish;",
   "claimAsk2": "Sud xarajatlarini javobgar zimmasiga yuklash.",
-  "claimNote": "Bu hujjat namuna (loyiha). Sudga topshirishdan oldin yurist tekshirsin va ilovalarni (shartnoma, to'lov jadvali, talabnoma nusxasi) biriktirsin."
+  "claimNote": "Bu hujjat namuna (loyiha). Sudga topshirishdan oldin yurist tekshirsin va ilovalarni (shartnoma, to'lov jadvali, talabnoma nusxasi) biriktirsin.",
+  "catalogTitle": "Mahsulotlar katalogi va ombor",
+  "catalogSub": "Narx, standart ustama, muddat oralig'i va ombor qoldig'i",
+  "stockTotal": "omborda jami",
+  "lowStock": "Kam qoldi",
+  "months12": "12 oy",
+  "maxMonthly": "Maks. oylik to'lov",
+  "usedMonthly": "Mavjud oylik to'lovlar",
+  "freeMonthly": "Bo'sh oylik sig'im",
+  "overCapacity": "Oylik to'lov ({{monthly}}) mijozning bo'sh to'lov sig'imidan ({{free}}) katta. Boshlang'ich to'lovni oshiring yoki muddatni uzaytiring."
 }

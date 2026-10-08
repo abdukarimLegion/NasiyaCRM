@@ -77,6 +77,14 @@ export interface ClientListItem {
   creditLimit: number;
 }
 
+export interface CreditLimitResult {
+  dtiPct: number;
+  maxMonthly: number;
+  usedMonthly: number;
+  freeMonthly: number;
+  limit: number;
+}
+
 export interface ClientsSummary {
   total: number;
   withDebt: number;

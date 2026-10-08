@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, qs } from '../api/client';
 import type {
-  ClientListItem, ContractDetails, Factor, Page, Product, Quote, QuoteRequest, ScoringRequest, ScoringResult, StopFactor,
+  ClientListItem, ContractDetails, CreditLimitResult, Factor, Page, Product, Quote, QuoteRequest, ScoringRequest, ScoringResult, StopFactor,
 } from '../api/types';
 import { Avatar, Badge, Btn, Card, CardHead, ErrorBox, Field, Gauge, Icon } from '../components/ui';
 import { useAuth } from '../lib/auth';
@@ -44,6 +44,13 @@ export default function NewCreditPage() {
     queryKey: ['scoring', clientId, scoringReq],
     queryFn: () => api.post<ScoringResult>('/api/scoring/evaluate', { clientId, scoring: scoringReq }),
     enabled: clientId != null && step >= 1,
+  });
+
+  // ichki limit: daromad × DTI(risk) − ochiq shartnomalardagi oylik to'lovlar
+  const limit = useQuery({
+    queryKey: ['client-limit', clientId, scoring.data?.risk],
+    queryFn: () => api.get<CreditLimitResult>(`/api/clients/${clientId}/limit?risk=${scoring.data!.risk}`),
+    enabled: clientId != null && !!scoring.data,
   });
 
   // 4. murobaha
@@ -153,6 +160,7 @@ export default function NewCreditPage() {
               {scoring.data && <Gauge value={scoring.data.total} cat={scoring.data.risk}
                 label={t('scoreOf')} sublabel={`${t('riskCategory')} ${scoring.data.risk}`} />}
               <ErrorBox error={scoring.error} />
+              {limit.data && <LimitCard l={limit.data} />}
             </div>
           </Card>
         </div>
@@ -237,7 +245,16 @@ export default function NewCreditPage() {
               <ErrorBox error={quote.error} />
             </div>
           </Card>
-          <QuoteCard quote={quote.data} />
+          <div className="col" style={{ gap: 16, minWidth: 0 }}>
+            {limit.data && quote.data && quote.data.monthlyPayment > limit.data.freeMonthly && (
+              <div className="stage-tip st-warn">
+                <Icon name="alert" size={18} />
+                <span>{t('overCapacity', { monthly: fmtSom(quote.data.monthlyPayment, lang), free: fmtSom(limit.data.freeMonthly, lang) })}</span>
+              </div>
+            )}
+            {limit.data && <LimitCard l={limit.data} compact />}
+            <QuoteCard quote={quote.data} />
+          </div>
         </div>
       )}
 
@@ -269,6 +286,28 @@ export default function NewCreditPage() {
           ? <Btn disabled={!canNext} onClick={() => setStep(step + 1)}>{step === 3 ? t('proceed') : t('next')}</Btn>
           : <Btn variant="gold" icon="check" disabled={create.isPending} onClick={() => create.mutate()}>{t('finish')}</Btn>}
       </div>
+    </div>
+  );
+}
+
+function LimitCard({ l, compact }: { l: CreditLimitResult; compact?: boolean }) {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
+  const usedPct = l.maxMonthly > 0 ? Math.min(100, (l.usedMonthly / l.maxMonthly) * 100) : 100;
+  return (
+    <div className="limit-card" style={{ width: '100%' }}>
+      <div className="row between">
+        <span className="faint" style={{ fontSize: 12 }}>{t('internalLimit')} · {t('months12')}</span>
+        <b className="mono" style={{ color: l.limit > 0 ? 'var(--success)' : 'var(--danger)', fontSize: compact ? 15 : 18 }}>{fmtSom(l.limit, lang)}</b>
+      </div>
+      <div className="bar" style={{ margin: '8px 0' }} title={`${Math.round(usedPct)}%`}>
+        <i style={{ width: `${usedPct}%`, background: usedPct >= 100 ? 'var(--danger)' : 'var(--gold)' }} />
+      </div>
+      <dl className="kv" style={{ fontSize: 12 }}>
+        <dt>{t('maxMonthly')} (DTI {l.dtiPct}%)</dt><dd className="mono">{fmtSom(l.maxMonthly, lang)}</dd>
+        <dt>{t('usedMonthly')}</dt><dd className="mono">{fmtSom(l.usedMonthly, lang)}</dd>
+        <dt>{t('freeMonthly')}</dt><dd className="mono" style={{ color: 'var(--success)' }}>{fmtSom(l.freeMonthly, lang)}</dd>
+      </dl>
     </div>
   );
 }

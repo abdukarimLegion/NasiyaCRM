@@ -85,6 +85,9 @@ jobs:
           check "localhost:8080/api/clients?size=5"
           check "localhost:8080/api/clients?q=998&size=5"
           check localhost:8080/api/clients/summary
+          CLID=$(curl -fsS -H "Authorization: Bearer $TOKEN" "localhost:8080/api/clients?size=1" | python3 -c 'import sys,json;print(json.load(sys.stdin)["content"][0]["id"])')
+          check "localhost:8080/api/clients/$CLID/limit?risk=A"
+          check localhost:8080/api/clients/$CLID
           check "localhost:8080/api/contracts?risk=A&size=3"
           check localhost:8080/api/products
           check -X POST -H 'Content-Type: application/json' -d "{\"contractId\":$CID,\"amount\":1000,\"method\":\"CASH\"}" localhost:8080/api/payments

@@ -269,3 +269,5 @@ button.funnel-card[data-on="true"] { box-shadow: 0 0 0 2px var(--primary), var(-
 .legal-doc ol { margin: 0; padding-left: 20px; }
 .doc-to { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; font-size: 12.5px; }
 .doc-sign { display: flex; justify-content: space-between; gap: 12px; margin-top: 18px; font-size: 12.5px; }
+
+.limit-card { padding: 14px 16px; border-radius: 12px; background: var(--bg-2); border: 1px solid var(--border); }

@@ -75,6 +75,20 @@ public class ClientService {
                 .stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
+    /** Mijozning ichki nasiya limiti: daromad, berilgan risk toifasi va ochiq shartnomalardagi oylik to'lovlar. */
+    @Transactional(readOnly = true)
+    public CreditLimit.Result limit(Long id, ScoringEngine.RiskCategory risk) {
+        Client c = get(id);
+        if (c.isBlacklisted()) {
+            return CreditLimit.of(BigDecimal.ZERO, risk, BigDecimal.ZERO);
+        }
+        BigDecimal used = jdbc.queryForObject("""
+                select coalesce(sum(monthly_payment), 0) from contracts
+                where client_id = :id and status in ('ACTIVE','LATE')
+                """, Map.of("id", id), BigDecimal.class);
+        return CreditLimit.of(c.getMonthlyIncome(), risk, used);
+    }
+
     @Transactional(readOnly = true)
     public ClientsSummary summary() {
         return jdbc.queryForObject("""
