@@ -240,6 +240,7 @@ export interface Dashboard {
     activeContracts: number;
     lateContracts: number;
     collectionRate?: number;
+    npl90Debt: number;
   };
   portfolio: {
     contracts: number;
@@ -256,6 +257,7 @@ export interface Dashboard {
   monthly: { month: string; collected: number; issued: number }[];
   profitForecast: { month: string; profit: number }[];
   riskMix: { category: RiskCategory; count: number }[];
+  categoryMix: { code: string; nameUz: string; nameRu: string; contracts: number; debt: number }[];
 }
 
 export interface NotificationTemplate {
