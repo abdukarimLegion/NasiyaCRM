@@ -120,8 +120,9 @@ public class ContractService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<ContractListItem> search(ContractStatus status, boolean openOnly, String q, int page, int size) {
-        var p = contracts.search(status, openOnly, q == null ? "" : q.trim(),
+    public PageResponse<ContractListItem> search(ContractStatus status, ScoringEngine.RiskCategory risk, boolean openOnly,
+                                                 String q, int page, int size) {
+        var p = contracts.search(status, risk, openOnly, q == null ? "" : q.trim(),
                 PageRequest.of(page, Math.min(size, 100), Sort.by(Sort.Direction.DESC, "id")));
         // Jadval yig'indilari bitta so'rov bilan (har bir shartnoma uchun alohida emas)
         List<Long> ids = p.getContent().stream().map(Contract::getId).toList();

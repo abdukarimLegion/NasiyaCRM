@@ -18,6 +18,7 @@ import uz.installment.contract.ContractDtos.ContractDetails;
 import uz.installment.contract.ContractDtos.ContractListItem;
 import uz.installment.contract.ContractDtos.CreateContractRequest;
 import uz.installment.contract.ContractDtos.QuoteRequest;
+import uz.installment.scoring.ScoringEngine;
 import uz.installment.security.AuthUser;
 
 @RestController
@@ -29,11 +30,12 @@ public class ContractController {
 
     @GetMapping
     public PageResponse<ContractListItem> list(@RequestParam(required = false) ContractStatus status,
+                                               @RequestParam(required = false) ScoringEngine.RiskCategory risk,
                                                @RequestParam(defaultValue = "false") boolean open,
                                                @RequestParam(required = false) String q,
                                                @RequestParam(defaultValue = "0") int page,
                                                @RequestParam(defaultValue = "20") int size) {
-        return service.search(status, open, q, page, size);
+        return service.search(status, risk, open, q, page, size);
     }
 
     @GetMapping("/{id}")

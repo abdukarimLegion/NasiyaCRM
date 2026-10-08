@@ -215,7 +215,7 @@ a { color: inherit; }
 .chip-sm { font: inherit; font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; cursor: pointer;
   padding: 3px 8px; border-radius: 7px; border: 1px solid var(--primary-border); background: var(--primary-soft); color: var(--primary-strong); }
 .chip-sm.is-danger { border-color: var(--danger-border); background: var(--danger-soft); color: var(--danger); }
-.method-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.method-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
 .method-btn { font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; padding: 7px 4px; border-radius: 8px;
   border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); white-space: nowrap; }
 .method-btn:hover { color: var(--text); border-color: var(--border-strong); }
@@ -234,6 +234,15 @@ a { color: inherit; }
 @media print {
   body * { visibility: hidden !important; }
   .print-area, .print-area * { visibility: visible !important; }
-  .print-area { position: fixed; left: 0; top: 0; width: 100%; padding: 12mm; color: #000; background: #fff; }
-  .modal-overlay { background: none !important; backdrop-filter: none !important; }
+  .modal-overlay { position: absolute; inset: 0; display: block; padding: 0; background: none !important; backdrop-filter: none !important; }
+  .modal { transform: none !important; animation: none !important; box-shadow: none; border: 0; max-height: none; max-width: none !important; }
+  .modal-body { overflow: visible; padding: 0; }
+  .print-area { padding: 10mm 12mm; color: #000; background: #fff; }
 }
+
+/* ============================================================
+   Shartnomalar reyestri
+   ============================================================ */
+.filter-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.seg-label { align-self: center; padding: 0 4px 0 6px; font-size: 11px; font-weight: 600; color: var(--text-faint); }
+.mini-bar { width: 84px; height: 4px; }

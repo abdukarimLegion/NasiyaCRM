@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
+import uz.installment.scoring.ScoringEngine;
 
 import java.time.LocalDate;
 import java.util.Collection;
@@ -29,14 +30,15 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     @Query("""
             select c from Contract c
             where (:status is null or c.status = :status)
+              and (:risk is null or c.riskCategory = :risk)
               and (:openOnly = false or c.status in (uz.installment.contract.ContractStatus.ACTIVE,
                                                      uz.installment.contract.ContractStatus.LATE))
               and (:q = '' or lower(c.contractNo) like lower(concat('%', :q, '%'))
                            or lower(c.client.fullName) like lower(concat('%', :q, '%'))
                            or c.client.phone like concat('%', :q, '%'))
             """)
-    Page<Contract> search(@Param("status") ContractStatus status, @Param("openOnly") boolean openOnly,
-                          @Param("q") String q, Pageable pageable);
+    Page<Contract> search(@Param("status") ContractStatus status, @Param("risk") ScoringEngine.RiskCategory risk,
+                          @Param("openOnly") boolean openOnly, @Param("q") String q, Pageable pageable);
 
     @EntityGraph(attributePaths = {"client", "schedule"})
     @Query("select c from Contract c where c.id = :id")

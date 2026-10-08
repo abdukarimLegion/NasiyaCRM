@@ -345,5 +345,13 @@
   "acceptedAmount": "Qabul qilingan summa",
   "remainingAfter": "Qolgan qarz",
   "cashierSign": "Kassir imzosi",
-  "clientSign": "Mijoz imzosi"
+  "clientSign": "Mijoz imzosi",
+  "installmentTotalShort": "Jami nasiya",
+  "contractsRegistry": "Nasiya shartnomalari va skoring reyestri",
+  "contractsRegistrySub": "Faol, kechikkan va yopilgan shartnomalar, to'lov holati va mijozlar skoringi",
+  "contractsSearch": "Mijoz, shartnoma raqami yoki telefon...",
+  "contract": "Shartnoma",
+  "clientPhone": "Mijoz / telefon",
+  "totalValue": "Jami qiymat",
+  "scoreRisk": "Skoring / risk"
 }

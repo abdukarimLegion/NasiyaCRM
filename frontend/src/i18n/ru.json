@@ -345,5 +345,13 @@
   "acceptedAmount": "Принятая сумма",
   "remainingAfter": "Остаток долга",
   "cashierSign": "Подпись кассира",
-  "clientSign": "Подпись клиента"
+  "clientSign": "Подпись клиента",
+  "installmentTotalShort": "Сумма рассрочки",
+  "contractsRegistry": "Реестр договоров рассрочки и скоринга",
+  "contractsRegistrySub": "Активные, просроченные и закрытые договоры, статус оплат и скоринг клиентов",
+  "contractsSearch": "Клиент, № договора или телефон...",
+  "contract": "Договор",
+  "clientPhone": "Клиент / телефон",
+  "totalValue": "Общая сумма",
+  "scoreRisk": "Скоринг / риск"
 }

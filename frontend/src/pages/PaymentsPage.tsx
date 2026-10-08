@@ -164,7 +164,7 @@ function ContractCashier({ id, onPaid }: { id: number; onPaid: (p: PaymentDto, c
             </div>
           </div>
           <div className="well-grid">
-            <div className="well"><span className="well-label">{t('installmentTotal')}</span><b className="well-val sm">{fmtMln(c.installmentTotal, lang)}</b></div>
+            <div className="well"><span className="well-label">{t('installmentTotalShort')}</span><b className="well-val sm">{fmtMln(c.installmentTotal, lang)}</b></div>
             <div className="well"><span className="well-label">{t('paid')}</span><b className="well-val sm" style={{ color: 'var(--success)' }}>{fmtMln(c.paidTotal, lang)}</b></div>
             <div className="well"><span className="well-label">{t('monthlyPayment')}</span><b className="well-val sm">{fmtMln(c.monthlyPayment, lang)}</b></div>
             <div className="well"><span className="well-label">{t('nextPay')}</span><b className="well-val sm" style={{ color: late > 0 ? 'var(--danger)' : 'var(--success)' }}>{next ? fmtDate(next.dueDate, lang) : '—'}</b></div>
