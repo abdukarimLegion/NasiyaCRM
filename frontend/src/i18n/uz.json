@@ -1,10 +1,8 @@
 {
   "appName": "Nasiya",
   "appTag": "Islamic Credit Platform",
-  "nav_main": "Asosiy",
-  "nav_credit": "Nasiya",
+  "nav_main": "Asosiy boshqaruv",
   "nav_analytics": "Tahlil",
-  "nav_admin": "Boshqaruv",
   "dashboard": "Boshqaruv paneli",
   "clients": "Mijozlar",
   "newCredit": "Yangi nasiya",
@@ -278,5 +276,13 @@
   "payments_period": "Davr",
   "total": "Jami",
   "noOverdue": "Muddati o'tgan qarzlar yo'q",
-  "reviewNeedsAdmin": "C toifa: faqat administrator tasdiqlay oladi"
+  "reviewNeedsAdmin": "C toifa: faqat administrator tasdiqlay oladi",
+  "nav_front": "Front ofis & operatsiyalar",
+  "nav_collection": "Undirish & aloqa",
+  "nav_system": "Tizim & sozlamalar",
+  "th_light-emerald": "Zumrad",
+  "th_light-blue": "Safir",
+  "th_dark-slate": "Slate",
+  "themeSwitch": "Fonni almashtirish (Zumrad / Safir / Slate)",
+  "brandTag": "Nasiya savdo & tahlil"
 }

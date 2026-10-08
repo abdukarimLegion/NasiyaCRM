@@ -1,10 +1,8 @@
 {
   "appName": "Nasiya",
   "appTag": "Islamic Credit Platform",
-  "nav_main": "Основное",
-  "nav_credit": "Рассрочка",
+  "nav_main": "Главное",
   "nav_analytics": "Аналитика",
-  "nav_admin": "Управление",
   "dashboard": "Панель",
   "clients": "Клиенты",
   "newCredit": "Новая рассрочка",
@@ -278,5 +276,13 @@
   "payments_period": "Период",
   "total": "Итого",
   "noOverdue": "Просроченных долгов нет",
-  "reviewNeedsAdmin": "Категория C: утверждает только администратор"
+  "reviewNeedsAdmin": "Категория C: утверждает только администратор",
+  "nav_front": "Фронт-офис и операции",
+  "nav_collection": "Взыскание и связь",
+  "nav_system": "Система и настройки",
+  "th_light-emerald": "Изумруд",
+  "th_light-blue": "Сапфир",
+  "th_dark-slate": "Slate",
+  "themeSwitch": "Сменить тему (Изумруд / Сапфир / Slate)",
+  "brandTag": "Рассрочка и аналитика"
 }

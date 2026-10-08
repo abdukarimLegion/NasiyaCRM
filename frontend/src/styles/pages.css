@@ -23,7 +23,7 @@
 
         .funnel { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
         @media (max-width: 760px) { .funnel { grid-template-columns: repeat(2, 1fr); } }
-        .funnel-card { display: flex; flex-direction: column; gap: 4px; padding: 18px 20px; border-radius: var(--radius);
+        .funnel-card { display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; border-radius: 14px;
           background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--info); box-shadow: var(--shadow-sm); position: relative; }
         .fc-reminder { border-left-color: var(--info); }
         .fc-soft { border-left-color: var(--gold); }
@@ -43,7 +43,7 @@
     .prod-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
     .prod-off-badge { position: absolute; top: 12px; right: 14px; font-size: 10.5px; font-weight: 700; padding: 2px 8px;
       border-radius: 99px; background: var(--surface-3); color: var(--text-faint); text-transform: uppercase; letter-spacing: .04em; }
-    .modal-overlay { position: fixed; inset: 0; background: oklch(0.2 0.02 80 / 0.4); backdrop-filter: blur(4px);
+    .modal-overlay { position: fixed; inset: 0; background: var(--overlay); backdrop-filter: blur(4px);
       display: grid; place-items: center; z-index: 100; padding: 20px; animation: fadeUp .2s; }
     .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
       box-shadow: var(--shadow-lg); width: 100%; max-height: 90vh; display: flex; flex-direction: column; }
@@ -123,9 +123,9 @@
     .decision-banner { display: flex; align-items: center; gap: 16px; padding: 22px 26px; border-radius: var(--radius-lg); color: #fff; }
     .db-ic { width: 52px; height: 52px; flex: none; border-radius: 14px; display: grid; place-items: center; background: rgba(255,255,255,.2); }
     .db-count { margin-left: auto; font-family: var(--font-mono); font-size: 18px; font-weight: 600; opacity: .9; }
-    .db-approved { background: linear-gradient(120deg, var(--primary) 0%, var(--primary-strong) 100%); }
-    .db-review { background: linear-gradient(120deg, var(--gold) 0%, var(--gold-strong) 100%); }
-    .db-rejected { background: linear-gradient(120deg, oklch(0.6 0.16 27) 0%, oklch(0.5 0.16 27) 100%); }
+    .db-approved { background: linear-gradient(120deg, var(--btn-bg) 0%, var(--btn-bg-hover) 100%); }
+    .db-review { background: linear-gradient(120deg, #f59e0b 0%, #d97706 100%); }
+    .db-rejected { background: linear-gradient(120deg, #e11d48 0%, #be123c 100%); }
 
     .stop-row { display: flex; align-items: center; gap: 12px; padding: 12px var(--pad-card); border-bottom: 1px solid var(--border); }
     .stop-row:last-child { border-bottom: 0; }
