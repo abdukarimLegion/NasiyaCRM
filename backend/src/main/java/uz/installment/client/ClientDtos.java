@@ -48,6 +48,21 @@ public final class ClientDtos {
         }
     }
 
+    /**
+     * Ro'yxat qatori: asosiy ma'lumot + nasiya ko'rsatkichlari.
+     * lastScore/lastRisk — oxirgi shartnomadagi skoring; creditLimit — {@link uz.installment.scoring.CreditLimit}.
+     */
+    public record ClientListItem(Long id, String fullName, String pinfl, String phone, String region, String district,
+                                 String workplace, BigDecimal monthlyIncome, boolean blacklisted, Instant createdAt,
+                                 long openContracts, BigDecimal activeDebt, BigDecimal monthlyObligation,
+                                 boolean hasLate, Integer lastScore, String lastRisk, BigDecimal creditLimit) {
+    }
+
+    /** Mijozlar bazasi bo'yicha umumiy ko'rsatkichlar. */
+    public record ClientsSummary(long total, long withDebt, long lateClients, BigDecimal avgScore,
+                                 BigDecimal gradeAPct, BigDecimal totalDebt) {
+    }
+
     /** Mijoz kartochkasi: ma'lumot + qisqa shartnomalar ro'yxati + qoldiq qarz. */
     public record ClientDetails(ClientResponse client, BigDecimal activeDebt, List<ContractBrief> contracts) {
     }

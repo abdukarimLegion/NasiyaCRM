@@ -46,6 +46,7 @@ export default function ContractDetailPage() {
             <table className="tbl">
               <thead><tr>
                 <th>#</th><th>{t('date')}</th><th className="num">{t('amount')}</th>
+                <th className="num">{t('principalPart')}</th><th className="num">{t('markupPart')}</th>
                 <th className="num">{t('paid')}</th><th>{t('status')}</th>
               </tr></thead>
               <tbody>
@@ -54,6 +55,8 @@ export default function ContractDetailPage() {
                     <td className="faint hide-sm">{s.seq}</td>
                     <td className="cell-main"><b>{fmtDate(s.dueDate, lang)}</b></td>
                     <td className="num" data-label={t('amount')}>{fmtSom(s.amount, lang)}</td>
+                    <td className="num" data-label={t('principalPart')}>{fmtSom(s.principalPart, lang)}</td>
+                    <td className="num" data-label={t('markupPart')}>{fmtSom(s.markupPart, lang)}</td>
                     <td className="num" data-label={t('paid')}>{fmtSom(s.paidAmount, lang)}</td>
                     <td data-label={t('status')}><ScheduleStatusBadge status={s.status} /></td>
                   </tr>

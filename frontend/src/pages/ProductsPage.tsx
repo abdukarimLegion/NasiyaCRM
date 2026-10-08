@@ -3,11 +3,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, qs } from '../api/client';
 import type { Category, Product } from '../api/types';
-import { Badge, Btn, Card, Empty, ErrorBox, Field, Modal } from '../components/ui';
+import { Badge, Btn, Card, Empty, ErrorBox, Field, Icon, Modal } from '../components/ui';
 import { useAuth } from '../lib/auth';
 import { fmtSom } from '../lib/format';
 
 type Draft = Omit<Product, 'id' | 'categoryCode'>;
+
+/** Ombor qoldig'i shundan kam bo'lsa "kam qoldi" belgisi chiqadi */
+const LOW_STOCK = 3;
 
 export default function ProductsPage() {
   const { t, i18n } = useTranslation();
@@ -27,6 +30,15 @@ export default function ProductsPage() {
 
   return (
     <div className="page">
+      <div className="page-head">
+        <div className="col" style={{ gap: 2 }}>
+          <h1 className="page-h1"><span className="h1-ic"><Icon name="briefcase" size={18} /></span>{t('catalogTitle')}</h1>
+          <span className="faint" style={{ fontSize: 12.5 }}>
+            {t('catalogSub')}{data ? ` · ${data.length} ${t('pcs')} · ${t('stockTotal')}: ${data.reduce((a, p) => a + p.stock, 0)}` : ''}
+          </span>
+        </div>
+        {hasRole('ADMIN') && <Btn icon="plus" size="sm" onClick={() => setEdit('new')}>{t('addProduct')}</Btn>}
+      </div>
       <div className="row between wrap" style={{ gap: 12, marginBottom: 18 }}>
         <div className="row gap-sm wrap">
           <span className="chip" data-on={cat === ''} onClick={() => setCat('')}>{t('allCats')}</span>
@@ -36,25 +48,31 @@ export default function ProductsPage() {
             </span>
           ))}
         </div>
-        {hasRole('ADMIN') && <Btn icon="plus" size="sm" onClick={() => setEdit('new')}>{t('addProduct')}</Btn>}
       </div>
       <ErrorBox error={error} />
       <Card>
         <div className="table-wrap">
           <table className="tbl">
             <thead><tr>
-              <th>{t('productName')}</th><th>{t('category')}</th><th className="num">{t('price')}</th>
+              <th>{t('productName')}</th><th>SKU</th><th>{t('category')}</th><th className="num">{t('price')}</th>
               <th className="num">{t('defMarkup')}</th><th>{t('termRange')}</th><th className="num">{t('stock')}</th><th>{t('status')}</th>
             </tr></thead>
             <tbody>
               {data?.map((p) => (
                 <tr key={p.id} onClick={() => hasRole('ADMIN') && setEdit(p)}>
                   <td className="cell-main"><b>{p.name}</b></td>
+                  <td className="mono faint" data-label="SKU">{p.sku || '—'}</td>
                   <td className="muted" data-label={t('category')}>{catName(p.categoryId)}</td>
                   <td className="num" data-label={t('price')}>{fmtSom(p.price, lang)}</td>
                   <td className="num" data-label={t('defMarkup')}>{p.markupPct}%</td>
                   <td data-label={t('termRange')}>{p.termMin}–{p.termMax} {t('months')}</td>
-                  <td className="num" data-label={t('stock')}>{p.stock}</td>
+                  <td className="num" data-label={t('stock')}>
+                    <div className="row" style={{ gap: 6, justifyContent: 'flex-end' }}>
+                      {p.active && p.stock <= 0 && <Badge tone="danger">{t('outOfStock')}</Badge>}
+                      {p.active && p.stock > 0 && p.stock <= LOW_STOCK && <Badge tone="warn">{t('lowStock')}</Badge>}
+                      <b>{p.stock}</b>
+                    </div>
+                  </td>
                   <td data-label={t('status')}>{p.active ? <Badge tone="success" dot>{t('active')}</Badge> : <Badge>{t('inactive')}</Badge>}</td>
                 </tr>
               ))}
@@ -94,6 +112,7 @@ function ProductModal({ product, categories, onClose }: { product: Product | nul
       <div className="col" style={{ gap: 14 }}>
         <ErrorBox error={save.error} />
         <Field label={t('productName')} req><input className="input" value={d.name} onChange={(e) => set('name', e.target.value)} /></Field>
+        <Field label="SKU"><input className="input mono" value={d.sku ?? ''} maxLength={50} onChange={(e) => set('sku', e.target.value)} /></Field>
         <Field label={t('category')}>
           <select className="select" value={d.categoryId} onChange={(e) => set('categoryId', Number(e.target.value))}>
             {categories.map((c) => <option key={c.id} value={c.id}>{i18n.language === 'ru' ? c.nameRu : c.nameUz}</option>)}

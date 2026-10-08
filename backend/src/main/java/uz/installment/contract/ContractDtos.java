@@ -49,14 +49,20 @@ public final class ContractDtos {
         }
     }
 
-    public record ContractListItem(Long id, String contractNo, Long clientId, String clientName, String productName,
-                                   BigDecimal salePrice, BigDecimal installmentTotal, BigDecimal monthlyPayment,
-                                   int termMonths, ContractStatus status, ScoringEngine.RiskCategory riskCategory,
-                                   Instant createdAt) {
-        static ContractListItem of(Contract c) {
+    public record ContractListItem(Long id, String contractNo, Long clientId, String clientName, String clientPhone,
+                                   String productName, BigDecimal salePrice, BigDecimal downPayment,
+                                   BigDecimal installmentTotal, BigDecimal monthlyPayment, int termMonths,
+                                   ContractStatus status, ScoringEngine.RiskCategory riskCategory,
+                                   Integer scoreTotal, BigDecimal paidTotal, BigDecimal remaining,
+                                   LocalDate nextDue, Instant createdAt) {
+        static ContractListItem of(Contract c, ScheduleItemRepository.ScheduleTotals t) {
             return new ContractListItem(c.getId(), c.getContractNo(), c.getClient().getId(),
-                    c.getClient().getFullName(), c.getProductName(), c.getSalePrice(), c.getInstallmentTotal(),
-                    c.getMonthlyPayment(), c.getTermMonths(), c.getStatus(), c.getRiskCategory(), c.getCreatedAt());
+                    c.getClient().getFullName(), c.getClient().getPhone(), c.getProductName(), c.getSalePrice(),
+                    c.getDownPayment(), c.getInstallmentTotal(), c.getMonthlyPayment(), c.getTermMonths(),
+                    c.getStatus(), c.getRiskCategory(), c.getScoreTotal(),
+                    t != null ? t.getPaid() : BigDecimal.ZERO,
+                    t != null ? t.getRemaining() : c.getInstallmentTotal(),
+                    t != null ? t.getNextDue() : null, c.getCreatedAt());
         }
     }
 

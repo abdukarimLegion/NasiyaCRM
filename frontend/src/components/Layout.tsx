@@ -14,26 +14,35 @@ interface NavItem { to: string; key: string; icon: IconName; roles?: Role[] }
 const NAV: { group: string; items: NavItem[] }[] = [
   { group: 'nav_main', items: [
     { to: '/', key: 'dashboard', icon: 'dashboard' },
-    { to: '/clients', key: 'clients', icon: 'clients' },
   ] },
-  { group: 'nav_credit', items: [
+  { group: 'nav_front', items: [
     { to: '/new-credit', key: 'newCredit', icon: 'newcredit', roles: ['ADMIN', 'CREDIT_OFFICER'] },
-    { to: '/contracts', key: 'contracts', icon: 'contracts' },
-    { to: '/payments', key: 'payments', icon: 'payments' },
-    { to: '/collection', key: 'collection', icon: 'collection', roles: ['ADMIN', 'COLLECTOR', 'CREDIT_OFFICER'] },
-  ] },
-  { group: 'nav_admin', items: [
+    { to: '/clients', key: 'clients', icon: 'clients' },
+    { to: '/payments', key: 'cashierNav', icon: 'payments' },
     { to: '/products', key: 'products', icon: 'briefcase' },
+    { to: '/contracts', key: 'contracts', icon: 'contracts' },
+  ] },
+  { group: 'nav_collection', items: [
+    { to: '/collection', key: 'collection', icon: 'collection', roles: ['ADMIN', 'COLLECTOR', 'CREDIT_OFFICER'] },
     { to: '/notifications', key: 'notifications', icon: 'bell' },
+  ] },
+  { group: 'nav_system', items: [
     { to: '/settings', key: 'settings', icon: 'settings', roles: ['ADMIN'] },
   ] },
 ];
 
-function readPref(key: string, def: string): string {
+const THEMES = ['light-emerald', 'light-blue', 'dark-slate'] as const;
+type Theme = (typeof THEMES)[number];
+const THEME_SWATCH: Record<Theme, string> = { 'light-emerald': '#059669', 'light-blue': '#2563eb', 'dark-slate': '#0f172a' };
+
+/** Saqlangan mavzu; eski "light"/"dark" qiymatlari yangi nomlarga o'tkaziladi */
+function readTheme(): Theme {
   try {
-    return localStorage.getItem(key) ?? def;
+    const v = localStorage.getItem('theme');
+    if (v === 'dark') return 'dark-slate';
+    return THEMES.find((x) => x === v) ?? 'light-emerald';
   } catch {
-    return def;
+    return 'light-emerald';
   }
 }
 
@@ -41,7 +50,7 @@ export default function Layout() {
   const { t, i18n } = useTranslation();
   const { user, logout, hasRole } = useAuth();
   const location = useLocation();
-  const [dark, setDark] = useState(() => readPref('theme', 'light') === 'dark');
+  const [theme, setTheme] = useState<Theme>(readTheme);
   const [collapsed, setCollapsed] = useState(false);
   // Telefonda yon panel chiqib-kiradigan panel (drawer) bo'ladi
   const [drawer, setDrawer] = useState(false);
@@ -49,32 +58,33 @@ export default function Layout() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('theme', dark ? 'dark' : 'light');
+      localStorage.setItem('theme', theme);
     } catch {
       /* ignore */
     }
-  }, [dark]);
+  }, [theme]);
 
   useEffect(() => {
     if (settings?.brandName) document.title = settings.brandName;
   }, [settings?.brandName]);
 
-  const current = NAV.flatMap((g) => g.items)
-    .filter((i) => (i.to === '/' ? location.pathname === '/' : location.pathname.startsWith(i.to)))[0];
+  const isCurrent = (i: NavItem) => (i.to === '/' ? location.pathname === '/' : location.pathname.startsWith(i.to));
+  const currentGroup = NAV.find((g) => g.items.some(isCurrent));
+  const current = currentGroup?.items.find(isCurrent);
   const lang = i18n.language === 'ru' ? 'ru' : 'uz';
 
   return (
-    <div className="app" data-theme={dark ? 'dark' : 'light'} data-density="regular" data-layout="sidebar"
+    <div className="app" data-theme={theme} data-density="regular" data-layout="sidebar"
       data-collapsed={collapsed} data-drawer={drawer}
       style={{ height: '100%', ...(settings?.primaryColor ? { ['--accent-base' as string]: settings.primaryColor } : {}) }}>
       <aside className="sidebar">
         <div className="brand">
           {settings?.logoUrl
             ? <img src={settings.logoUrl} alt="" className="brand-mark" style={{ objectFit: 'contain' }} />
-            : <div className="brand-mark">ن</div>}
+            : <div className="brand-mark"><Icon name="trend" /></div>}
           <div className="brand-text">
             <b>{settings?.brandName ?? t('appName')}</b>
-            <span>CRM</span>
+            <span>{t('brandTag')}</span>
           </div>
         </div>
         <nav className="nav">
@@ -121,19 +131,22 @@ export default function Layout() {
             }}>
             <Icon name="menu" />
           </button>
-          <div className="col" style={{ gap: 0 }}>
-            <div className="page-title">{t(current?.key ?? 'dashboard')}</div>
-            {settings && <div className="page-sub">{settings.companyName}</div>}
+          <div className="crumb">
+            <span className="crumb-cat">{t(currentGroup?.group ?? 'nav_main')}</span>
+            <span className="crumb-sep"><Icon name="chevR" size={13} /></span>
+            <span className="crumb-page">{t(current?.key ?? 'dashboard')}</span>
           </div>
           <div className="topbar-spacer" />
           <div className="seg" style={{ flex: 'none' }}>
             {(['uz', 'ru'] as const).map((l) => (
               <button key={l} data-on={lang === l} onClick={() => setLang(l)}
-                style={{ padding: '7px 11px', textTransform: 'uppercase', fontSize: 12 }}>{l}</button>
+                style={{ textTransform: 'uppercase', fontFamily: 'var(--font-mono)', fontSize: 11 }}>{l}</button>
             ))}
           </div>
-          <button className="iconbtn" onClick={() => setDark((d) => !d)} title="Theme">
-            <Icon name={dark ? 'sun' : 'moon'} />
+          <button className="pill-btn" title={t('themeSwitch')}
+            onClick={() => setTheme((cur) => THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length])}>
+            <span className="swatch" style={{ background: THEME_SWATCH[theme] }} />
+            <span className="hide-sm">{t(`th_${theme}`)}</span>
           </button>
         </header>
         <Outlet />

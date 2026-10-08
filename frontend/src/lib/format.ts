@@ -27,6 +27,22 @@ export function fmtDate(d: string | Date | null | undefined, lang = 'uz'): strin
   return `${dt.getDate()} ${m} ${dt.getFullYear()}`;
 }
 
+/** 12 okt 2026, 14:05 */
+export function fmtDateTime(d: string | null | undefined, lang = 'uz'): string {
+  if (!d) return '—';
+  const dt = new Date(d);
+  const p = (x: number) => String(x).padStart(2, '0');
+  return `${fmtDate(dt, lang)}, ${p(dt.getHours())}:${p(dt.getMinutes())}`;
+}
+
+/** Berilgan sanadan bugungacha necha kun o'tgan (kelajak bo'lsa 0). */
+export function daysSince(iso: string): number {
+  const d = new Date(`${iso.slice(0, 10)}T00:00:00`);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round((now.getTime() - d.getTime()) / 86_400_000));
+}
+
 export function todayIso(): string {
   const d = new Date();
   const p = (x: number) => String(x).padStart(2, '0');

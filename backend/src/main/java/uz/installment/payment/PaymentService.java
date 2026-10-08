@@ -40,11 +40,12 @@ public class PaymentService {
     }
 
     public record PaymentDto(Long id, Long contractId, String contractNo, String clientName, BigDecimal amount,
-                             PaymentMethod method, Instant paidAt, String externalId, String note) {
+                             PaymentMethod method, Instant paidAt, String externalId, String note,
+                             String cashierName) {
         static PaymentDto of(Payment p) {
             return new PaymentDto(p.getId(), p.getContract().getId(), p.getContract().getContractNo(),
                     p.getContract().getClient().getFullName(), p.getAmount(), p.getMethod(), p.getPaidAt(),
-                    p.getExternalId(), p.getNote());
+                    p.getExternalId(), p.getNote(), p.getCashier() != null ? p.getCashier().getFullName() : null);
         }
     }
 

@@ -29,13 +29,17 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ContractService {
 
     private final ContractRepository contracts;
+    private final ScheduleItemRepository scheduleItems;
     private final ClientRepository clients;
     private final ProductRepository products;
     private final UserRepository users;
@@ -116,10 +120,16 @@ public class ContractService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<ContractListItem> search(ContractStatus status, String q, int page, int size) {
-        var p = contracts.search(status, q == null ? "" : q.trim(),
+    public PageResponse<ContractListItem> search(ContractStatus status, ScoringEngine.RiskCategory risk, boolean openOnly,
+                                                 String q, int page, int size) {
+        var p = contracts.search(status, risk, openOnly, q == null ? "" : q.trim(),
                 PageRequest.of(page, Math.min(size, 100), Sort.by(Sort.Direction.DESC, "id")));
-        return PageResponse.of(p, ContractListItem::of);
+        // Jadval yig'indilari bitta so'rov bilan (har bir shartnoma uchun alohida emas)
+        List<Long> ids = p.getContent().stream().map(Contract::getId).toList();
+        Map<Long, ScheduleItemRepository.ScheduleTotals> totals = ids.isEmpty() ? Map.of()
+                : scheduleItems.totalsFor(ids).stream()
+                .collect(Collectors.toMap(ScheduleItemRepository.ScheduleTotals::getContractId, Function.identity()));
+        return PageResponse.of(p, c -> ContractListItem.of(c, totals.get(c.getId())));
     }
 
     @Transactional(readOnly = true)

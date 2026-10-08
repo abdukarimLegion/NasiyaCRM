@@ -56,6 +56,44 @@ export interface Client {
 
 export type ClientRequest = Omit<Client, 'id' | 'createdAt'>;
 
+/** /api/clients ro'yxat qatori: asosiy ma'lumot + nasiya ko'rsatkichlari */
+export interface ClientListItem {
+  id: number;
+  fullName: string;
+  pinfl: string;
+  phone: string;
+  region?: string;
+  district?: string;
+  workplace?: string;
+  monthlyIncome?: number;
+  blacklisted: boolean;
+  createdAt: string;
+  openContracts: number;
+  activeDebt: number;
+  monthlyObligation: number;
+  hasLate: boolean;
+  lastScore?: number;
+  lastRisk?: RiskCategory;
+  creditLimit: number;
+}
+
+export interface CreditLimitResult {
+  dtiPct: number;
+  maxMonthly: number;
+  usedMonthly: number;
+  freeMonthly: number;
+  limit: number;
+}
+
+export interface ClientsSummary {
+  total: number;
+  withDebt: number;
+  lateClients: number;
+  avgScore?: number;
+  gradeAPct?: number;
+  totalDebt: number;
+}
+
 export interface ContractBrief {
   id: number;
   contractNo: string;
@@ -152,13 +190,19 @@ export interface ContractListItem {
   contractNo: string;
   clientId: number;
   clientName: string;
+  clientPhone: string;
   productName: string;
   salePrice: number;
+  downPayment: number;
   installmentTotal: number;
   monthlyPayment: number;
   termMonths: number;
   status: ContractStatus;
   riskCategory?: RiskCategory;
+  scoreTotal?: number;
+  paidTotal: number;
+  remaining: number;
+  nextDue?: string;
   createdAt: string;
 }
 
@@ -200,6 +244,7 @@ export interface PaymentDto {
   paidAt: string;
   externalId?: string;
   note?: string;
+  cashierName?: string;
 }
 
 export type CollectionStage = 'REMINDER' | 'SOFT' | 'HARD' | 'LEGAL';
@@ -240,6 +285,7 @@ export interface Dashboard {
     activeContracts: number;
     lateContracts: number;
     collectionRate?: number;
+    npl90Debt: number;
   };
   portfolio: {
     contracts: number;
@@ -256,6 +302,7 @@ export interface Dashboard {
   monthly: { month: string; collected: number; issued: number }[];
   profitForecast: { month: string; profit: number }[];
   riskMix: { category: RiskCategory; count: number }[];
+  categoryMix: { code: string; nameUz: string; nameRu: string; contracts: number; debt: number }[];
 }
 
 export interface NotificationTemplate {

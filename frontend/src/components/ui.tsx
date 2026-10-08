@@ -74,7 +74,7 @@ export function RiskPill({ cat, showLabel = false }: { cat?: RiskCategory | null
   );
 }
 
-export type StatTone = 'primary' | 'gold' | 'danger' | 'info';
+export type StatTone = 'primary' | 'success' | 'gold' | 'danger' | 'info';
 
 export function Stat({ icon, label, value, sub, tone = 'primary' }: {
   icon: IconName; label: string; value: ReactNode; sub?: ReactNode; tone?: StatTone;
@@ -121,7 +121,7 @@ export function Gauge({ value, max = 100, cat, size = 180, label, sublabel }: {
           strokeDasharray={`${arc * pct} ${circ}`} style={{ transition: 'stroke-dasharray .7s, stroke .4s' }} />
       </svg>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="display tnum" style={{ fontSize: size * 0.3, fontWeight: 600, lineHeight: 1, color }}>{value}</div>
+        <div className="mono tnum" style={{ fontSize: size * 0.28, fontWeight: 700, lineHeight: 1, color, letterSpacing: '-.03em' }}>{value}</div>
         {label && <div className="faint" style={{ fontSize: size * 0.07, marginTop: 4 }}>{label}</div>}
         {sublabel && <div style={{ fontSize: size * 0.075, fontWeight: 600, color, marginTop: 2 }}>{sublabel}</div>}
       </div>
@@ -231,7 +231,7 @@ export function Modal({ title, onClose, children, footer, wide }: {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal anim" style={{ maxWidth: wide ? 720 : 520 }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h3 className="display" style={{ margin: 0, fontSize: 19 }}>{title}</h3>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{title}</h3>
           <button className="iconbtn" style={{ width: 34, height: 34 }} onClick={onClose}><Icon name="x" size={17} /></button>
         </div>
         <div className="modal-body scroll">{children}</div>

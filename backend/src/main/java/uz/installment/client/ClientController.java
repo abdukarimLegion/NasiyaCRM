@@ -17,6 +17,8 @@ import uz.installment.client.ClientDtos.ClientDetails;
 import uz.installment.client.ClientDtos.ClientRequest;
 import uz.installment.client.ClientDtos.ClientResponse;
 import uz.installment.common.PageResponse;
+import uz.installment.scoring.CreditLimit;
+import uz.installment.scoring.ScoringEngine;
 
 @RestController
 @RequestMapping("/api/clients")
@@ -26,10 +28,21 @@ public class ClientController {
     private final ClientService service;
 
     @GetMapping
-    public PageResponse<ClientResponse> list(@RequestParam(required = false) String q,
-                                             @RequestParam(defaultValue = "0") int page,
-                                             @RequestParam(defaultValue = "20") int size) {
+    public PageResponse<ClientDtos.ClientListItem> list(@RequestParam(required = false) String q,
+                                                        @RequestParam(defaultValue = "0") int page,
+                                                        @RequestParam(defaultValue = "20") int size) {
         return service.search(q, page, size);
+    }
+
+    @GetMapping("/{id}/limit")
+    public CreditLimit.Result limit(@PathVariable Long id,
+                                    @RequestParam(required = false) ScoringEngine.RiskCategory risk) {
+        return service.limit(id, risk);
+    }
+
+    @GetMapping("/summary")
+    public ClientDtos.ClientsSummary summary() {
+        return service.summary();
     }
 
     @GetMapping("/{id}")
