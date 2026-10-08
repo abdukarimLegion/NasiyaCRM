@@ -88,6 +88,8 @@ jobs:
           check "localhost:8080/api/contracts?risk=A&size=3"
           check localhost:8080/api/products
           check -X POST -H 'Content-Type: application/json' -d "{\"contractId\":$CID,\"amount\":1000,\"method\":\"CASH\"}" localhost:8080/api/payments
+          check -X POST -H 'Content-Type: application/json' -d '{"text":"Smoke test SMS"}' localhost:8080/api/collection/contracts/$CID/sms
+          check localhost:8080/api/collection/contracts/$CID/actions
           if [ "$fail" != 0 ]; then tail -n 80 /tmp/app.log; exit 1; fi
 
   frontend:

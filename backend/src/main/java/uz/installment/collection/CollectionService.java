@@ -18,11 +18,11 @@ public class CollectionService {
     public enum Stage {
         REMINDER, SOFT, HARD, LEGAL;
 
-        /** 1–3 kun: eslatma, 4–14: soft, 15–30: hard, 30+: sud/huquqiy. */
+        /** 1–3 kun: eslatma, 4–30: soft (SMS, qo'ng'iroq), 31–90: hard (talabnoma, tashrif), 90+: sud/MIB. */
         public static Stage of(int daysLate) {
             if (daysLate <= 3) return REMINDER;
-            if (daysLate <= 14) return SOFT;
-            if (daysLate <= 30) return HARD;
+            if (daysLate <= 30) return SOFT;
+            if (daysLate <= 90) return HARD;
             return LEGAL;
         }
     }

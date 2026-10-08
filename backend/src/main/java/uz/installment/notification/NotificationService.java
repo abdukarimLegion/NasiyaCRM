@@ -102,6 +102,13 @@ public class NotificationService {
         return out;
     }
 
+    /** Undiruvchi yozgan SMS'ni mijozga yuboradi va jurnalga yozadi (MANUAL). */
+    @Transactional
+    public NotificationLog.Status sendManualSms(Contract contract, String text) {
+        Client client = contract.getClient();
+        return sendOne("MANUAL", NotificationChannel.SMS, sms, client.getPhone(), client, contract, null, text);
+    }
+
     private NotificationLog.Status sendOne(String eventKey, NotificationChannel channel, MessageSender sender,
                                            String recipient, Client client, Contract contract, ScheduleItem item,
                                            String text) {
