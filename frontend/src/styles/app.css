@@ -82,6 +82,17 @@ a { color: inherit; }
    Dashboard
    ============================================================ */
 .block { margin-top: 20px; }
+/* Telefonda: avval xulosa kartasi, keyin uzun jadval */
+@media (max-width: 980px) {
+  .detail-grid > :last-child { order: -1; }
+}
+@media (max-width: 720px) {
+  .hide-sm { display: none !important; }
+}
+/* Grid ichidagi keng kontent (jadval, uzun matn) ustunni cho'zib yubormasin */
+.dash-grid > *, .grid-2-1 > *, .grid-2 > *, .detail-grid > *, .notify-grid > *, .cashier-grid > *,
+.grid-wiz > *, .info-grid > *, .form-grid > * { min-width: 0; }
+
 .health-banner {
   display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
   padding: 14px 18px; border-radius: 14px;
