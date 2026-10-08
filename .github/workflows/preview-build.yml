@@ -1,7 +1,7 @@
 name: Preview build (vaqtinchalik)
 
-# Faqat ish branchida: frontendni yig'ib, dist'ni logga chiqaradi (vizual tekshiruv uchun).
-# main ga merge qilishdan oldin o'chiriladi.
+# Faqat ish branchida: frontendni yig'ib, dist'ni yashirin refs/preview/dist ref'iga yozadi
+# (vizual tekshiruv uchun; branch emas, UI'da ko'rinmaydi). main ga merge qilishdan oldin o'chiriladi.
 on:
   push:
     branches: ['claude/**']
@@ -9,6 +9,8 @@ on:
 jobs:
   frontend:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: frontend
@@ -22,9 +24,12 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
-      - name: dist -> log
+      - name: dist -> refs/preview/dist
+        env:
+          TOKEN: ${{ github.token }}
         run: |
-          tar czf /tmp/dist.tgz -C dist .
-          ls -la /tmp/dist.tgz
-          base64 -w 2000 /tmp/dist.tgz | sed 's/^/B64:/'
-          echo "B64-END"
+          cd dist
+          git init -q
+          git add -A
+          git -c user.name=preview -c user.email=preview@localhost commit -qm "preview ${GITHUB_SHA}"
+          git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:refs/preview/dist
