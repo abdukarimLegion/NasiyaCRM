@@ -152,13 +152,19 @@ export interface ContractListItem {
   contractNo: string;
   clientId: number;
   clientName: string;
+  clientPhone: string;
   productName: string;
   salePrice: number;
+  downPayment: number;
   installmentTotal: number;
   monthlyPayment: number;
   termMonths: number;
   status: ContractStatus;
   riskCategory?: RiskCategory;
+  scoreTotal?: number;
+  paidTotal: number;
+  remaining: number;
+  nextDue?: string;
   createdAt: string;
 }
 
@@ -200,6 +206,7 @@ export interface PaymentDto {
   paidAt: string;
   externalId?: string;
   note?: string;
+  cashierName?: string;
 }
 
 export type CollectionStage = 'REMINDER' | 'SOFT' | 'HARD' | 'LEGAL';

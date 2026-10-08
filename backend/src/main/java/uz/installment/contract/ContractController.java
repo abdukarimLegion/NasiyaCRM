@@ -29,10 +29,11 @@ public class ContractController {
 
     @GetMapping
     public PageResponse<ContractListItem> list(@RequestParam(required = false) ContractStatus status,
+                                               @RequestParam(defaultValue = "false") boolean open,
                                                @RequestParam(required = false) String q,
                                                @RequestParam(defaultValue = "0") int page,
                                                @RequestParam(defaultValue = "20") int size) {
-        return service.search(status, q, page, size);
+        return service.search(status, open, q, page, size);
     }
 
     @GetMapping("/{id}")

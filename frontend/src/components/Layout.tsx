@@ -18,7 +18,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
   { group: 'nav_front', items: [
     { to: '/new-credit', key: 'newCredit', icon: 'newcredit', roles: ['ADMIN', 'CREDIT_OFFICER'] },
     { to: '/clients', key: 'clients', icon: 'clients' },
-    { to: '/payments', key: 'payments', icon: 'payments' },
+    { to: '/payments', key: 'cashierNav', icon: 'payments' },
     { to: '/products', key: 'products', icon: 'briefcase' },
     { to: '/contracts', key: 'contracts', icon: 'contracts' },
   ] },

@@ -6,10 +6,33 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 
 public interface ScheduleItemRepository extends JpaRepository<ScheduleItem, Long> {
+
+    /** Shartnoma bo'yicha jadval yig'indisi: to'langan, qolgan va navbatdagi to'lov sanasi. */
+    interface ScheduleTotals {
+        Long getContractId();
+
+        BigDecimal getPaid();
+
+        BigDecimal getRemaining();
+
+        LocalDate getNextDue();
+    }
+
+    @Query(value = """
+            select contract_id as "contractId", sum(paid_amount) as "paid",
+                   sum(amount - paid_amount) as "remaining",
+                   min(due_date) filter (where status <> 'PAID') as "nextDue"
+            from schedule_items
+            where contract_id in (:ids)
+            group by contract_id
+            """, nativeQuery = true)
+    List<ScheduleTotals> totalsFor(@Param("ids") Collection<Long> ids);
 
     @Modifying
     @Transactional
