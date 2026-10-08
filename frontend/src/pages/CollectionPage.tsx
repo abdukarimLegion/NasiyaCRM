@@ -8,7 +8,7 @@ import type {
 } from '../api/types';
 import { Badge, Btn, Card, Empty, ErrorBox, Field, Icon, Modal, type Tone } from '../components/ui';
 import type { IconName } from '../components/icons';
-import { fmtDate, fmtMln, fmtSom, todayIso } from '../lib/format';
+import { fmtDate, fmtMln, fmtSom } from '../lib/format';
 
 const STAGES: CollectionStage[] = ['REMINDER', 'SOFT', 'HARD', 'LEGAL'];
 const STAGE_KEY: Record<CollectionStage, string> = { REMINDER: 'reminder', SOFT: 'soft', HARD: 'hard', LEGAL: 'legal' };
@@ -76,7 +76,7 @@ export default function CollectionPage() {
           <table className="tbl">
             <thead><tr>
               <th>{t('clientContract')}</th><th>{t('phone')}</th>
-              <th className="num">{t('overdue')}</th><th>{t('daysLate')}</th><th>{t('status')}</th>
+              <th className="num">{t('overdue')}</th><th>{t('delay')}</th><th>{t('status')}</th>
               <th>{t('lastAction')}</th><th>{t('quickActions')}</th>
             </tr></thead>
             <tbody>
@@ -91,7 +91,7 @@ export default function CollectionPage() {
                   </td>
                   <td className="mono" data-label={t('phone')}>{r.phone}</td>
                   <td className="num" data-label={t('overdue')}><b style={{ color: 'var(--danger)' }}>{fmtSom(r.overdueAmount, lang)}</b></td>
-                  <td data-label={t('daysLate')}><span className="mono">{r.daysLate}</span> {t('daysLateShort')}</td>
+                  <td data-label={t('delay')}><span className="mono">{r.daysLate}</span> {t('daysLateShort')}</td>
                   <td data-label={t('status')}><Badge tone={STAGE_TONE[r.stage]} dot>{t(STAGE_KEY[r.stage])}</Badge></td>
                   <td data-label={t('lastAction')}>{r.lastActionDate ? fmtDate(r.lastActionDate, lang) : <span className="faint">—</span>}</td>
                   <td data-label={t('quickActions')} onClick={(e) => e.stopPropagation()}>
@@ -283,7 +283,7 @@ function DocModal({ row, kind, onClose }: { row: OverdueRow; kind: Doc; onClose:
             </>
           )}
           <div className="doc-sign">
-            <span>{todayIso()}</span>
+            <span>{fmtDate(new Date(), lang)}</span>
             <span>{company} · ____________</span>
           </div>
         </div>

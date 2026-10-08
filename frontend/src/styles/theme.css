@@ -522,6 +522,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 }
 .tbl tbody tr { cursor: pointer; transition: background .12s; }
 .tbl tbody tr:hover { background: var(--surface-2); }
+.tbl a { text-decoration: none; }
+.tbl a:hover { text-decoration: underline; color: var(--primary); }
 .tbl tbody tr:last-child td { border-bottom: 0; }
 .tbl .num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 .tbl .num { font-family: var(--font-mono); font-size: 12px; }

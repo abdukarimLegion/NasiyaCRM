@@ -420,5 +420,6 @@
   "maxMonthly": "Maks. oylik to'lov",
   "usedMonthly": "Mavjud oylik to'lovlar",
   "freeMonthly": "Bo'sh oylik sig'im",
-  "overCapacity": "Oylik to'lov ({{monthly}}) mijozning bo'sh to'lov sig'imidan ({{free}}) katta. Boshlang'ich to'lovni oshiring yoki muddatni uzaytiring."
+  "overCapacity": "Oylik to'lov ({{monthly}}) mijozning bo'sh to'lov sig'imidan ({{free}}) katta. Boshlang'ich to'lovni oshiring yoki muddatni uzaytiring.",
+  "delay": "Kechikish"
 }

@@ -5,7 +5,7 @@
         .dash-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 22px; align-items: stretch; }
         @media (max-width: 1040px) { .dash-grid { grid-template-columns: 1fr; } }
         .dash-grid > .card { display: flex; flex-direction: column; }
-        .dash-grid > .card > .card-pad { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        .dash-grid > .card > .card-pad { flex: 1; display: flex; flex-direction: column; justify-content: flex-start; }
         .legend { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 12px; }
         .legend i { width: 10px; height: 10px; border-radius: 3px; }
         .pay-row { display: flex; align-items: center; gap: 12px; padding: 11px var(--pad-card); border-bottom: 1px solid var(--border); }
