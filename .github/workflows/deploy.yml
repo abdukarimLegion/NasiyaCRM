@@ -96,7 +96,26 @@ jobs:
             PreferredAuthentications password,keyboard-interactive
             ServerAliveInterval 30
           EOF
-          sshpass -e ssh vps 'docker --version && docker compose version'
+
+      # Yangi serverda Docker bo'lmasa — rasmiy skript bilan o'rnatiladi (bir marta).
+      # Docker allaqachon bor bo'lsa, hech narsaga tegilmaydi.
+      - name: Docker (yo'q bo'lsa o'rnatish)
+        run: |
+          sshpass -e ssh vps 'bash -s' <<'REMOTE'
+          set -e
+          SUDO=""; [ "$(id -u)" -eq 0 ] || SUDO="sudo"
+          if ! command -v docker >/dev/null 2>&1; then
+            echo "Docker topilmadi — o'rnatilmoqda..."
+            curl -fsSL https://get.docker.com | $SUDO sh
+            $SUDO systemctl enable --now docker
+          fi
+          if ! docker compose version >/dev/null 2>&1; then
+            echo "Docker Compose plagini topilmadi — o'rnatilmoqda..."
+            $SUDO apt-get update -qq && $SUDO apt-get install -y -qq docker-compose-plugin
+          fi
+          docker --version
+          docker compose version
+          REMOTE
 
       - name: Fayllarni serverga ko'chirish
         env:

@@ -60,7 +60,7 @@ Baza migratsiyalari (Flyway) backend ishga tushganda avtomatik bajariladi.
 | Workflow | Qachon | Nima qiladi |
 |---|---|---|
 | `.github/workflows/ci.yml` | PR (`master`/`main`) va deploy ichida | backend `./gradlew build` (testlar bilan), frontend `lint` + `tsc` + `vite build` |
-| `.github/workflows/deploy.yml` | **`master` (yoki `main`) ga har push**, yoki qo'lda (*Run workflow*) | CI → image'larni `ghcr.io` ga yuklaydi → VPS ga SSH orqali chiqib yangilaydi → backend sog'lomligini tekshiradi |
+| `.github/workflows/deploy.yml` | **`master` (yoki `main`) ga har push**, yoki qo'lda (*Run workflow*) | CI → image'larni `ghcr.io` ga yuklaydi → VPS ga SSH orqali chiqib (Docker yo'q bo'lsa o'rnatib) yangilaydi → backend sog'lomligini tekshiradi |
 
 **Serverdagi mavjud servislar va portlarga tegilmaydi** (`deploy/remote-deploy.sh`):
 
