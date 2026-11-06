@@ -6,6 +6,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import uz.installment.branch.BranchRepository;
 import uz.installment.client.Client;
 import uz.installment.client.ClientRepository;
 import uz.installment.common.BusinessException;
@@ -20,7 +21,7 @@ import uz.installment.product.ProductRepository;
 import uz.installment.scoring.ScoringEngine;
 import uz.installment.scoring.ScoringService;
 import uz.installment.security.AuthUser;
-import uz.installment.security.Role;
+import uz.installment.security.Permission;
 import uz.installment.security.UserRepository;
 import uz.installment.settings.SettingsService;
 import uz.installment.settings.TenantSettings;
@@ -43,6 +44,7 @@ public class ContractService {
     private final ClientRepository clients;
     private final ProductRepository products;
     private final UserRepository users;
+    private final BranchRepository branches;
     private final ScoringService scoring;
     private final SettingsService settings;
     private final ApplicationEventPublisher events;
@@ -72,9 +74,9 @@ public class ContractService {
             throw new BusinessException("SCORING_REJECTED",
                     "Nasiya rad etildi: ball " + score.total() + ", stop-faktorlar " + score.stopFactors());
         }
-        if (score.decision() == ScoringEngine.Decision.REVIEW && officer.role() != Role.ADMIN) {
+        if (score.decision() == ScoringEngine.Decision.REVIEW && !officer.has(Permission.CONTRACTS_APPROVE)) {
             throw new BusinessException("REVIEW_REQUIRED",
-                    "Risk toifasi C — shartnomani faqat administrator tasdiqlay oladi");
+                    "Risk toifasi C — shartnomani tasdiqlash huquqi bor xodim (administrator) tasdiqlashi kerak");
         }
 
         TenantSettings cfg = settings.current();
@@ -100,6 +102,13 @@ public class ContractService {
         c.setDecision(score.decision());
         c.setScoreDetails(scoreDetails(score, req.scoring()));
         c.setOfficer(users.getReferenceById(officer.id()));
+        // Filial: xodimning o'z filiali; filiali yo'q (bosh ofis) yoki barcha filiallarga ruxsati bo'lsa — tanlangani
+        Long branchId = officer.branchId() != null && !officer.has(Permission.ALL_BRANCHES)
+                ? officer.branchId()
+                : (req.branchId() != null ? req.branchId() : officer.branchId());
+        if (branchId != null) {
+            c.setBranch(branches.findById(branchId).orElseThrow(() -> new NotFoundException("Filial", branchId)));
+        }
         c.setGuarantorName(req.guarantorName());
         c.setGuarantorPhone(req.guarantorPhone());
         c.setSignedAt(Instant.now());
@@ -121,8 +130,8 @@ public class ContractService {
 
     @Transactional(readOnly = true)
     public PageResponse<ContractListItem> search(ContractStatus status, ScoringEngine.RiskCategory risk, boolean openOnly,
-                                                 String q, int page, int size) {
-        var p = contracts.search(status, risk, openOnly, q == null ? "" : q.trim(),
+                                                 String q, Long branchId, int page, int size) {
+        var p = contracts.search(status, risk, openOnly, q == null ? "" : q.trim(), branchId,
                 PageRequest.of(page, Math.min(size, 100), Sort.by(Sort.Direction.DESC, "id")));
         // Jadval yig'indilari bitta so'rov bilan (har bir shartnoma uchun alohida emas)
         List<Long> ids = p.getContent().stream().map(Contract::getId).toList();
@@ -133,8 +142,18 @@ public class ContractService {
     }
 
     @Transactional(readOnly = true)
-    public ContractDetails details(Long id) {
-        return ContractDetails.of(contracts.findWithSchedule(id).orElseThrow(() -> new NotFoundException("Shartnoma", id)));
+    public ContractDetails details(Long id, AuthUser me) {
+        Contract c = contracts.findWithSchedule(id).orElseThrow(() -> new NotFoundException("Shartnoma", id));
+        checkScope(c, me);
+        return ContractDetails.of(c);
+    }
+
+    /** Boshqa filial shartnomasi — faqat ALL_BRANCHES ruxsati bilan ko'rinadi. */
+    public static void checkScope(Contract c, AuthUser me) {
+        Long scope = me.branchScope(null);
+        if (scope != null && (c.getBranch() == null || !scope.equals(c.getBranch().getId()))) {
+            throw new NotFoundException("Shartnoma", c.getId());
+        }
     }
 
     @Transactional

@@ -52,12 +52,13 @@ public class NotificationController {
     }
 
     @GetMapping("/templates")
+    @PreAuthorize("hasAuthority('NOTIFICATIONS_VIEW')")
     public List<TemplateDto> templates() {
         return templates.findAllByOrderByOffsetDaysAsc().stream().map(TemplateDto::of).toList();
     }
 
     @PutMapping("/templates/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('NOTIFICATIONS_EDIT')")
     @Transactional
     public TemplateDto update(@PathVariable Long id, @Valid @RequestBody TemplateUpdate req) {
         NotificationTemplate t = templates.findById(id).orElseThrow(() -> new NotFoundException("Shablon", id));
@@ -69,6 +70,7 @@ public class NotificationController {
     }
 
     @GetMapping("/log")
+    @PreAuthorize("hasAuthority('NOTIFICATIONS_VIEW')")
     public PageResponse<LogDto> log(@RequestParam(defaultValue = "0") int page,
                                     @RequestParam(defaultValue = "50") int size) {
         return PageResponse.of(logs.findAllByOrderByIdDesc(PageRequest.of(page, Math.min(size, 200))), LogDto::of);
@@ -76,7 +78,7 @@ public class NotificationController {
 
     /** Qo'lda ishga tushirish (sinov uchun). */
     @PostMapping("/run-reminders")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('NOTIFICATIONS_EDIT')")
     public NotificationService.ReminderStats runNow() {
         return service.sendDailyReminders();
     }

@@ -43,6 +43,10 @@ public class CollectionAction extends TenantEntity {
     @Column(name = "promised_amount", precision = 18, scale = 2)
     private BigDecimal promisedAmount;
 
+    /** Rejalashtirilgan sana: tashrif yoki qayta qo'ng'iroq kuni */
+    @Column(name = "planned_date")
+    private LocalDate plannedDate;
+
     @Column(name = "user_id")
     private Long userId;
 

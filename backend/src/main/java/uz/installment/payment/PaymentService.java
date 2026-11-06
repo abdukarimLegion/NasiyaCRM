@@ -105,11 +105,11 @@ public class PaymentService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<PaymentDto> list(LocalDate from, LocalDate to, int page, int size) {
+    public PageResponse<PaymentDto> list(LocalDate from, LocalDate to, Long branchId, int page, int size) {
         ZoneId zone = clock.getZone();
         LocalDate f = from != null ? from : LocalDate.now(clock).withDayOfMonth(1);
         LocalDate t = to != null ? to : LocalDate.now(clock);
-        var p = payments.findInPeriod(f.atStartOfDay(zone).toInstant(), t.plusDays(1).atStartOfDay(zone).toInstant(),
+        var p = payments.findInPeriod(f.atStartOfDay(zone).toInstant(), t.plusDays(1).atStartOfDay(zone).toInstant(), branchId,
                 PageRequest.of(page, Math.min(size, 200), Sort.by(Sort.Direction.DESC, "paidAt")));
         return PageResponse.of(p, PaymentDto::of);
     }

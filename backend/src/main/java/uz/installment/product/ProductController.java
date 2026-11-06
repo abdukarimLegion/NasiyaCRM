@@ -70,6 +70,7 @@ public class ProductController {
     }
 
     @GetMapping("/products")
+    @PreAuthorize("hasAnyAuthority('PRODUCTS_VIEW','CONTRACTS_CREATE')")
     @Transactional(readOnly = true)
     public List<ProductResponse> list(@RequestParam(required = false) Long categoryId,
                                       @RequestParam(defaultValue = "false") boolean activeOnly) {
@@ -78,7 +79,7 @@ public class ProductController {
 
     @PostMapping("/products")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PRODUCTS_EDIT')")
     @Transactional
     public ProductResponse create(@Valid @RequestBody ProductRequest req) {
         Product p = new Product();
@@ -87,7 +88,7 @@ public class ProductController {
     }
 
     @PutMapping("/products/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PRODUCTS_EDIT')")
     @Transactional
     public ProductResponse update(@PathVariable Long id, @Valid @RequestBody ProductRequest req) {
         Product p = products.findById(id).orElseThrow(() -> new NotFoundException("Mahsulot", id));

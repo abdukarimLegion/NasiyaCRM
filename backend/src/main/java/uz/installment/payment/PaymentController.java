@@ -36,18 +36,21 @@ public class PaymentController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('PAYMENTS_VIEW')")
     public PageResponse<PaymentDto> list(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size) {
-        return service.list(from, to, page, size);
+            @RequestParam(defaultValue = "50") int size,
+            @RequestParam(required = false) Long branchId,
+            @AuthenticationPrincipal AuthUser me) {
+        return service.list(from, to, me.branchScope(branchId), page, size);
     }
 
     /** Kassada (naqd/karta) qabul qilingan to'lov. Payme/Click uchun alohida webhook controller keyin qo'shiladi. */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('ADMIN','CASHIER','CREDIT_OFFICER')")
+    @PreAuthorize("hasAuthority('PAYMENTS_ACCEPT')")
     public PaymentDto register(@Valid @RequestBody PaymentRequest req, @AuthenticationPrincipal AuthUser me) {
         return service.register(new PaymentService.RegisterPayment(req.contractId(), req.amount(), req.method(),
                 req.externalId(), req.note()), me);
