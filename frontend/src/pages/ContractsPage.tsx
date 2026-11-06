@@ -6,6 +6,7 @@ import { api, qs } from '../api/client';
 import type { ContractListItem, ContractStatus, Page, RiskCategory } from '../api/types';
 import { Btn, Card, ContractStatusBadge, Empty, ErrorBox, Icon, RiskPill } from '../components/ui';
 import { useAuth } from '../lib/auth';
+import { useBranch } from '../lib/branch';
 import { downloadCsv } from '../lib/csv';
 import { daysSince, fmtDate, fmtMln, fmtSom } from '../lib/format';
 
@@ -16,7 +17,8 @@ export default function ContractsPage() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const nav = useNavigate();
-  const { hasRole } = useAuth();
+  const { can } = useAuth();
+  const branch = useBranch();
   const [status, setStatus] = useState<ContractStatus | ''>('');
   const [risk, setRisk] = useState<RiskCategory | ''>('');
   const [q, setQ] = useState('');
@@ -31,8 +33,8 @@ export default function ContractsPage() {
 
   const filter = { status, risk, q: debounced };
   const { data, error } = useQuery({
-    queryKey: ['contracts', filter, page],
-    queryFn: () => api.get<Page<ContractListItem>>(`/api/contracts${qs({ ...filter, page })}`),
+    queryKey: ['contracts', filter, page, branch.param],
+    queryFn: () => api.get<Page<ContractListItem>>(`/api/contracts${qs({ ...filter, page, branchId: branch.param })}`),
   });
 
   const statusLabel: Record<string, string> = {
@@ -45,7 +47,7 @@ export default function ContractsPage() {
     try {
       const all: ContractListItem[] = [];
       for (let p = 0; ; p++) {
-        const res = await api.get<Page<ContractListItem>>(`/api/contracts${qs({ ...filter, page: p, size: 100 })}`);
+        const res = await api.get<Page<ContractListItem>>(`/api/contracts${qs({ ...filter, page: p, size: 100, branchId: branch.param })}`);
         all.push(...res.content);
         if (p + 1 >= res.totalPages) break;
       }
@@ -75,7 +77,7 @@ export default function ContractsPage() {
               <Btn variant="ghost" size="sm" icon="download" disabled={exporting || !data?.totalElements} onClick={exportCsv}>
                 CSV ({data?.totalElements ?? 0})
               </Btn>
-              {hasRole('ADMIN', 'CREDIT_OFFICER') && <Btn icon="plus" size="sm" onClick={() => nav('/new-credit')}>{t('newCredit')}</Btn>}
+              {can('CONTRACTS_CREATE') && <Btn icon="plus" size="sm" onClick={() => nav('/new-credit')}>{t('newCredit')}</Btn>}
             </div>
           </div>
           <div className="filter-bar">

@@ -9,7 +9,7 @@ import { fmtDate } from '../lib/format';
 
 export default function NotificationsPage() {
   const { t, i18n } = useTranslation();
-  const { hasRole } = useAuth();
+  const { can } = useAuth();
   const qc = useQueryClient();
   const [edit, setEdit] = useState<NotificationTemplate | null>(null);
   const templates = useQuery({ queryKey: ['templates'], queryFn: () => api.get<NotificationTemplate[]>('/api/notifications/templates') });
@@ -24,7 +24,7 @@ export default function NotificationsPage() {
     <div className="page col" style={{ gap: 22 }}>
       <Card>
         <CardHead title={t('notifications')} sub={t('notifyDesc')}
-          right={hasRole('ADMIN') && (
+          right={can('NOTIFICATIONS_EDIT') && (
             <Btn size="sm" variant="soft" icon="message" disabled={run.isPending} onClick={() => run.mutate()}>{t('runReminders')}</Btn>
           )} />
         {run.data && <div className="card-pad faint">SENT {run.data.sent} · FAILED {run.data.failed} · SKIPPED {run.data.skipped}</div>}
@@ -34,7 +34,7 @@ export default function NotificationsPage() {
             <thead><tr><th>{t('event')}</th><th>{t('channel')}</th><th>{t('template')}</th><th>{t('status')}</th></tr></thead>
             <tbody>
               {templates.data?.map((tp) => (
-                <tr key={tp.id} onClick={() => hasRole('ADMIN') && setEdit(tp)}>
+                <tr key={tp.id} onClick={() => can('NOTIFICATIONS_EDIT') && setEdit(tp)}>
                   <td className="cell-main"><b>{t(`e_${tp.eventKey}`)}</b></td>
                   <td data-label={t('channel')}>{chLabel[tp.channel]}</td>
                   <td className="muted" data-label={t('template')} style={{ maxWidth: 420 }}>{i18n.language === 'ru' ? tp.textRu : tp.textUz}</td>

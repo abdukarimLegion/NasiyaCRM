@@ -60,3 +60,16 @@ export function avatarColor(name: string): string {
   for (const c of name) h += c.charCodeAt(0);
   return `oklch(0.62 0.12 ${hues[h % hues.length]})`;
 }
+
+/** "2026-11" -> "noy 2026" (short=true: "noy") */
+export function fmtMonth(ym: string, lang = 'uz', short = false): string {
+  const [y, m] = ym.split('-').map(Number);
+  const name = (lang === 'ru' ? MONTHS_RU : MONTHS_UZ)[m - 1];
+  return short ? name : `${name} ${y}`;
+}
+
+/** Joriy oy "YYYY-MM" ko'rinishida */
+export function currentMonth(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}

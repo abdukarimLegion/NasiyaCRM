@@ -8,6 +8,7 @@ import type {
 } from '../api/types';
 import { Avatar, Badge, Btn, Card, CardHead, ErrorBox, Field, Gauge, Icon } from '../components/ui';
 import { useAuth } from '../lib/auth';
+import { useBranch } from '../lib/branch';
 import { fmtDate, fmtSom } from '../lib/format';
 
 const STEPS = ['step_client', 'step_scoring', 'step_stop', 'step_finance', 'step_contract'];
@@ -21,7 +22,8 @@ export default function NewCreditPage() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const nav = useNavigate();
-  const { hasRole } = useAuth();
+  const { can } = useAuth();
+  const branch = useBranch();
   const [params] = useSearchParams();
   const [step, setStep] = useState(0);
 
@@ -84,6 +86,7 @@ export default function NewCreditPage() {
     mutationFn: () => api.post<ContractDetails>('/api/contracts', {
       clientId, terms: quoteReq, scoring: scoringReq,
       guarantorName: guarantorName || undefined, guarantorPhone: guarantorPhone || undefined,
+      branchId: branch.param,
     }),
     onSuccess: (c) => nav(`/contracts/${c.id}`),
   });
@@ -93,7 +96,7 @@ export default function NewCreditPage() {
   const canNext = [
     clientId != null,
     !!scoring.data,
-    decision === 'APPROVED' || (decision === 'REVIEW' && hasRole('ADMIN')),
+    decision === 'APPROVED' || (decision === 'REVIEW' && can('CONTRACTS_APPROVE')),
     !!quote.data,
     true,
   ][step];
@@ -197,7 +200,7 @@ export default function NewCreditPage() {
               {decision === 'APPROVED' && <Badge tone="success" dot>{t('approved')}</Badge>}
               {decision === 'REVIEW' && <Badge tone="warn" dot>{t('review')}</Badge>}
               {decision === 'REJECTED' && <Badge tone="danger" dot>{t('rejected')}</Badge>}
-              {decision === 'REVIEW' && !hasRole('ADMIN') && <span className="faint">{t('reviewNeedsAdmin')}</span>}
+              {decision === 'REVIEW' && !can('CONTRACTS_APPROVE') && <span className="faint">{t('reviewNeedsAdmin')}</span>}
             </div>
           </Card>
         </div>

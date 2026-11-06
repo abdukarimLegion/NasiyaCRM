@@ -20,11 +20,64 @@ export interface Page<T> {
   totalPages: number;
 }
 
+export type Permission =
+  | 'DASHBOARD_VIEW' | 'CLIENTS_VIEW' | 'CLIENTS_EDIT'
+  | 'CONTRACTS_VIEW' | 'CONTRACTS_CREATE' | 'CONTRACTS_APPROVE' | 'CONTRACTS_CANCEL'
+  | 'PAYMENTS_VIEW' | 'PAYMENTS_ACCEPT' | 'PRODUCTS_VIEW' | 'PRODUCTS_EDIT'
+  | 'COLLECTION_VIEW' | 'COLLECTION_WORK' | 'COLLECTION_ASSIGN' | 'COLLECTION_LEGAL'
+  | 'NOTIFICATIONS_VIEW' | 'NOTIFICATIONS_EDIT'
+  | 'KPI_VIEW_ALL' | 'KPI_MANAGE' | 'FORECAST_VIEW'
+  | 'BRANCHES_VIEW' | 'BRANCHES_MANAGE' | 'ALL_BRANCHES'
+  | 'USERS_MANAGE' | 'SETTINGS_EDIT' | 'DOCUMENTS_EDIT';
+
 export interface UserView {
   id: number;
   username: string;
   fullName: string;
   role: Role;
+  active: boolean;
+  branchId?: number;
+  branchName?: string;
+  permissions: Permission[];
+  /** true — xodimga rolidan farqli shaxsiy ruxsatlar berilgan */
+  customPermissions: boolean;
+}
+
+export interface UserBrief {
+  id: number;
+  fullName: string;
+  role: Role;
+  branchId?: number;
+  active: boolean;
+}
+
+export interface PermissionMatrix {
+  permissions: { key: Permission; section: string }[];
+  roles: { role: Role; permissions: Permission[]; defaults: Permission[]; customized: boolean; locked: boolean }[];
+}
+
+export interface Branch {
+  id: number;
+  code: string;
+  name: string;
+  address?: string;
+  phone?: string;
+  managerName?: string;
+  monthlyTarget?: number;
+  active: boolean;
+}
+
+export interface BranchStats extends Branch {
+  staff: number;
+  openContracts: number;
+  lateContracts: number;
+  debt: number;
+  overdue: number;
+  issuedCount: number;
+  issued: number;
+  collected: number;
+  collectionRate?: number;
+  planPct?: number;
 }
 
 export interface LoginResponse {
@@ -204,6 +257,8 @@ export interface ContractListItem {
   remaining: number;
   nextDue?: string;
   createdAt: string;
+  branchId?: number;
+  branchName?: string;
 }
 
 export interface ContractDetails {
@@ -232,6 +287,11 @@ export interface ContractDetails {
   createdAt: string;
   closedAt?: string;
   schedule: ScheduleItem[];
+  branchId?: number;
+  branchName?: string;
+  officerName?: string;
+  collectorId?: number;
+  collectorName?: string;
 }
 
 export interface PaymentDto {
@@ -249,6 +309,10 @@ export interface PaymentDto {
 
 export type CollectionStage = 'REMINDER' | 'SOFT' | 'HARD' | 'LEGAL';
 
+export type ActionType = 'CALL' | 'SMS' | 'VISIT' | 'LETTER' | 'LEGAL' | 'NOTE';
+export type PromiseStatus = 'PENDING' | 'KEPT' | 'BROKEN';
+export type LegalStatus = 'PRETRIAL' | 'FILED' | 'HEARING' | 'DECIDED' | 'ENFORCEMENT' | 'CLOSED';
+
 export interface OverdueRow {
   contractId: number;
   contractNo: string;
@@ -259,9 +323,25 @@ export interface OverdueRow {
   daysLate: number;
   stage: CollectionStage;
   lastActionDate?: string;
+  lastActionType?: ActionType;
+  lastResult?: string;
+  remaining: number;
+  monthlyPayment: number;
+  overdueInstallments: number;
+  branchId?: number;
+  branchName?: string;
+  collectorId?: number;
+  collectorName?: string;
+  promisedDate?: string;
+  promisedAmount?: number;
+  promiseStatus?: PromiseStatus;
+  plannedDate?: string;
+  plannedType?: ActionType;
+  lettersSent: number;
+  lastLetterDate?: string;
+  legalCaseId?: number;
+  legalStatus?: LegalStatus;
 }
-
-export type ActionType = 'CALL' | 'SMS' | 'VISIT' | 'LETTER' | 'LEGAL' | 'NOTE';
 
 export interface CollectionActionDto {
   id: number;
@@ -270,8 +350,176 @@ export interface CollectionActionDto {
   note?: string;
   promisedDate?: string;
   promisedAmount?: number;
+  plannedDate?: string;
   userId?: number;
+  userName?: string;
   createdAt: string;
+}
+
+export interface LegalCaseRow {
+  id: number;
+  contractId: number;
+  contractNo: string;
+  clientId: number;
+  clientName: string;
+  phone: string;
+  pinfl: string;
+  status: LegalStatus;
+  claimAmount: number;
+  remaining: number;
+  paidSinceOpened: number;
+  daysLate: number;
+  courtName?: string;
+  caseNo?: string;
+  filedAt?: string;
+  hearingAt?: string;
+  decisionAt?: string;
+  enforcementNo?: string;
+  note?: string;
+  assignedUserId?: number;
+  assignedUserName?: string;
+  branchName?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type DocCode = 'CONTRACT' | 'DEMAND' | 'CLAIM';
+
+export interface DocTemplate {
+  code: DocCode;
+  lang: 'uz' | 'ru';
+  title: string;
+  body: string;
+  updatedAt: string;
+}
+
+export interface DocLogRow {
+  id: number;
+  code: DocCode;
+  docNo: string;
+  lang: string;
+  amount?: number;
+  userName?: string;
+  createdAt: string;
+}
+
+export type KpiMetric = 'CONTRACTS' | 'SALES' | 'COLLECTED' | 'RECOVERED' | 'ACTIONS' | 'QUALITY';
+export type KpiGrade = 'A' | 'B' | 'C' | 'D';
+
+export interface KpiConfig {
+  weights: Record<KpiMetric, number>;
+  minScoreForBonus: number;
+  bonusCapPct: number;
+  achievementCapPct: number;
+}
+
+export interface KpiTargets {
+  contractsCount: number;
+  salesVolume: number;
+  collectedAmount: number;
+  recoveredAmount: number;
+  actionsCount: number;
+  bonusAmount: number;
+}
+
+export interface KpiMetricResult {
+  metric: KpiMetric;
+  actual?: number;
+  target?: number;
+  achievementPct?: number;
+  weight: number;
+  included: boolean;
+}
+
+export interface OperatorKpi {
+  userId: number;
+  fullName: string;
+  role: Role;
+  branchId?: number;
+  branchName?: string;
+  targets: KpiTargets;
+  metrics: KpiMetricResult[];
+  score?: number;
+  grade?: KpiGrade;
+  bonusPayout: number;
+  openContracts: number;
+  lateContracts: number;
+  promisesMade: number;
+  promisesKept: number;
+  rank: number;
+}
+
+export interface KpiReport {
+  summary: {
+    month: string;
+    operators: number;
+    avgScore?: number;
+    totalBonus: number;
+    grades: Record<KpiGrade, number>;
+    totalSales: number;
+    totalCollected: number;
+    totalRecovered: number;
+  };
+  config: KpiConfig;
+  operators: OperatorKpi[];
+}
+
+export interface KpiHistoryPoint {
+  month: string;
+  score?: number;
+  grade?: KpiGrade;
+  sales: number;
+  collected: number;
+  recovered: number;
+  contracts: number;
+  actions: number;
+}
+
+export interface ForecastPoint {
+  month: string;
+  seasonality: number;
+  scheduled: number;
+  fromSchedule: number;
+  fromArrears: number;
+  newSales: number;
+  fromNewSales: number;
+  inflow: number;
+  profit: number;
+  netCash: number;
+  cumulativeNet: number;
+  debtEnd: number;
+  arrearsEnd: number;
+}
+
+export interface ForecastTotals {
+  inflow: number;
+  profit: number;
+  newSales: number;
+  netCash: number;
+  debtEnd: number;
+  arrearsEnd: number;
+}
+
+export interface Forecast {
+  assumptions: {
+    onTimeRatePct: number;
+    recoveryRatePct: number;
+    baseMonthlySales: number;
+    avgMarkupPct: number;
+    avgTermMonths: number;
+    openDebt: number;
+    arrears: number;
+    historyMonths: number;
+  };
+  points: ForecastPoint[];
+  totals: ForecastTotals;
+  scenarios: { key: 'pessimistic' | 'base' | 'optimistic'; salesGrowthPct: number; collectionAdjPct: number; totals: ForecastTotals }[];
+  ecl: { key: string; ratePct: number; exposure: number; reserve: number }[];
+  eclTotal: number;
+  insights: { code: string; level: 'info' | 'success' | 'warn' | 'danger'; value?: string }[];
+  seasonality: number[];
+  customSeasonality: boolean;
+  suggestedSeasonality?: number[];
 }
 
 export interface Dashboard {

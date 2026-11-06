@@ -5,8 +5,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './styles/theme.css';
 import './styles/pages.css';
 import './styles/app.css';
+import './styles/features.css';
 import './i18n';
 import { AuthProvider } from './lib/auth';
+import { BranchProvider } from './lib/branch';
 import App from './App';
 
 const queryClient = new QueryClient({
@@ -18,7 +20,9 @@ createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <App />
+          <BranchProvider>
+            <App />
+          </BranchProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

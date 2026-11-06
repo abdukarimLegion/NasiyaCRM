@@ -10,14 +10,15 @@ import {
   Btn, Card, CardHead, Empty, ErrorBox, Field, Icon, Modal, ScheduleStatusBadge, Seg,
 } from '../components/ui';
 import { useAuth } from '../lib/auth';
+import { useBranch } from '../lib/branch';
 import { daysSince, fmtDate, fmtDateTime, fmtMln, fmtSom, todayIso } from '../lib/format';
 
 const METHODS: PaymentMethod[] = ['CASH', 'CARD', 'PAYME', 'CLICK', 'UZUM', 'BANK_TRANSFER'];
 
 export default function PaymentsPage() {
   const { t } = useTranslation();
-  const { hasRole } = useAuth();
-  const canAccept = hasRole('ADMIN', 'CASHIER', 'CREDIT_OFFICER');
+  const { can } = useAuth();
+  const canAccept = can('PAYMENTS_ACCEPT');
   const [tab, setTab] = useState<'cashier' | 'history'>(canAccept ? 'cashier' : 'history');
 
   return (
@@ -42,6 +43,7 @@ export default function PaymentsPage() {
 /* ------------------------------------------------------------------ Kassa */
 
 function Cashier() {
+  const branch = useBranch();
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const [query, setQuery] = useState('');
@@ -55,8 +57,8 @@ function Cashier() {
   }, [query]);
 
   const list = useQuery({
-    queryKey: ['cashier-contracts', debounced],
-    queryFn: () => api.get<Page<ContractListItem>>(`/api/contracts${qs({ open: true, q: debounced, size: 50 })}`),
+    queryKey: ['cashier-contracts', debounced, branch.param],
+    queryFn: () => api.get<Page<ContractListItem>>(`/api/contracts${qs({ open: true, q: debounced, size: 50, branchId: branch.param })}`),
   });
   const rows = list.data?.content ?? [];
   const activeId = selectedId ?? rows[0]?.id ?? null;
@@ -280,14 +282,15 @@ function ReceiptModal({ payment, contract, onClose }: { payment: PaymentDto; con
 /* ------------------------------------------------------------------ Tarix */
 
 function History() {
+  const branch = useBranch();
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const nav = useNavigate();
   const [from, setFrom] = useState(() => `${todayIso().slice(0, 8)}01`);
   const [to, setTo] = useState(todayIso());
   const { data, error } = useQuery({
-    queryKey: ['payments', from, to],
-    queryFn: () => api.get<Page<PaymentDto>>(`/api/payments${qs({ from, to, size: 200 })}`),
+    queryKey: ['payments', from, to, branch.param],
+    queryFn: () => api.get<Page<PaymentDto>>(`/api/payments${qs({ from, to, size: 200, branchId: branch.param })}`),
   });
   const total = data?.content.reduce((s, p) => s + p.amount, 0) ?? 0;
   const byMethod = METHODS.map((m) => ({

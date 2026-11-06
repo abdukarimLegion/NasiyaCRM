@@ -14,7 +14,7 @@ export default function ClientDetailPage() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const nav = useNavigate();
-  const { hasRole } = useAuth();
+  const { can } = useAuth();
   const [editing, setEditing] = useState(false);
   const { data, error, isLoading } = useQuery({
     queryKey: ['client', Number(id)],
@@ -39,7 +39,7 @@ export default function ClientDetailPage() {
       <div className="detail-grid">
         <Card>
           <CardHead title={t('contracts')} sub={`${t('remaining')}: ${fmtSom(data.activeDebt, lang)}`}
-            right={hasRole('ADMIN', 'CREDIT_OFFICER') && (
+            right={can('CONTRACTS_CREATE') && (
               <Btn size="sm" icon="plus" onClick={() => nav(`/new-credit?clientId=${c.id}`)}>{t('newCredit')}</Btn>
             )} />
           <div className="table-wrap">
@@ -73,7 +73,7 @@ export default function ClientDetailPage() {
                 <b className="display" style={{ fontSize: 19 }}>{c.fullName}</b>
                 {c.blacklisted && <span className="badge badge-danger">{t('s_BLACKLIST')}</span>}
               </div>
-              {hasRole('ADMIN', 'CREDIT_OFFICER') && (
+              {can('CLIENTS_EDIT') && (
                 <Btn variant="ghost" size="sm" icon="pen" style={{ marginLeft: 'auto' }} onClick={() => setEditing(true)}>{t('edit')}</Btn>
               )}
             </div>

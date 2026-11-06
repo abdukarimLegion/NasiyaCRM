@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, getToken, setToken, setUnauthorizedHandler } from '../api/client';
-import type { LoginResponse, Role, UserView } from '../api/types';
+import type { LoginResponse, Permission, Role, UserView } from '../api/types';
 
 interface AuthState {
   user: UserView | null;
@@ -9,6 +9,10 @@ interface AuthState {
   login: (username: string, password: string, onVerified?: () => Promise<void>) => Promise<void>;
   logout: () => void;
   hasRole: (...roles: Role[]) => boolean;
+  /** Ruxsatlardan kamida bittasi bo'lsa true */
+  can: (...perms: Permission[]) => boolean;
+  /** Ruxsat va filial o'zgargan bo'lsa qayta yuklash */
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -41,10 +45,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(res.user);
   }, []);
 
+  const refresh = useCallback(async () => {
+    if (!getToken()) return;
+    setUser(await api.get<UserView>('/api/auth/me'));
+  }, []);
+
   const value = useMemo<AuthState>(() => ({
-    user, ready, login, logout,
+    user, ready, login, logout, refresh,
     hasRole: (...roles) => !!user && roles.includes(user.role),
-  }), [user, ready, login, logout]);
+    can: (...perms) => !!user && perms.some((p) => user.permissions?.includes(p)),
+  }), [user, ready, login, logout, refresh]);
 
   // @ts-ignore
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
