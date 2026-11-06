@@ -43,7 +43,7 @@ Mijoz serverida bu qatorni bo'sh qoldiring.
 nusxalab turing.**
 
 ```bash
-./deploy/restore.sh backups/nasiya_2026-10-01_0200.dump   # tiklash
+sh deploy/restore.sh backups/nasiya_2026-10-01_0200.dump   # tiklash (loyiha papkasidan)
 ```
 
 ### Yangilash
