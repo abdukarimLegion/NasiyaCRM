@@ -72,7 +72,38 @@ export const api = {
   get: <T>(path: string) => request<T>('GET', path),
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
   put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
+  del: <T>(path: string) => request<T>('DELETE', path),
 };
+
+/**
+ * PDF hujjatni yuklab, yangi oynada ochadi (token bilan, shuning uchun oddiy havola emas).
+ * Oyna oldindan ochiladi — aks holda brauzer popup'ni bloklaydi.
+ */
+export async function openPdf(method: 'GET' | 'POST', path: string): Promise<void> {
+  const win = window.open('', '_blank');
+  const headers: Record<string, string> = { Accept: 'application/pdf' };
+  const token = getToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  try {
+    const res = await fetch(BASE + path, { method, headers });
+    if (!res.ok) {
+      let data: { code?: string; detail?: string } = {};
+      try {
+        data = await res.json();
+      } catch {
+        /* bo'sh javob */
+      }
+      throw new ApiError(res.status, data.code ?? String(res.status), data.detail ?? res.statusText);
+    }
+    const url = URL.createObjectURL(await res.blob());
+    if (win) win.location.href = url;
+    else window.location.href = url;
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  } catch (e) {
+    win?.close();
+    throw e;
+  }
+}
 
 export function qs(params: Record<string, string | number | boolean | null | undefined>): string {
   const p = new URLSearchParams();

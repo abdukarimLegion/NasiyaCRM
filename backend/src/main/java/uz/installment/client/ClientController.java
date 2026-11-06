@@ -21,6 +21,7 @@ import uz.installment.scoring.CreditLimit;
 import uz.installment.scoring.ScoringEngine;
 
 @RestController
+@PreAuthorize("hasAnyAuthority('CLIENTS_VIEW','CONTRACTS_CREATE')")
 @RequestMapping("/api/clients")
 @RequiredArgsConstructor
 public class ClientController {
@@ -52,13 +53,13 @@ public class ClientController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('ADMIN','CREDIT_OFFICER')")
+    @PreAuthorize("hasAuthority('CLIENTS_EDIT')")
     public ClientResponse create(@Valid @RequestBody ClientRequest req) {
         return service.create(req);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','CREDIT_OFFICER')")
+    @PreAuthorize("hasAuthority('CLIENTS_EDIT')")
     public ClientResponse update(@PathVariable Long id, @Valid @RequestBody ClientRequest req) {
         return service.update(id, req);
     }

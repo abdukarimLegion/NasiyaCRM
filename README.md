@@ -29,7 +29,8 @@ Brauzerda `http://SERVER_IP` manzilini oching va `.env` dagi admin login/paroli 
 Keyin **Sozlamalar** bo'limida kompaniya nomi, brend, rang, shartnoma prefiksi va
 xodimlarni kiriting.
 
-Demo ma'lumotlar bilan sinab ko'rish uchun `.env` da `SPRING_PROFILES_ACTIVE=dev` qo'ying.
+Demo ma'lumotlar bilan sinab ko'rish uchun `.env` da `SPRING_PROFILES_ACTIVE=dev` qo'ying
+(3 ta filial va demo xodimlar: `operator1..3`, `kassir1`, `undiruvchi1`, paroli `demo12345`).
 Mijoz serverida bu qatorni bo'sh qoldiring.
 
 **HTTPS:** eng oddiy yo'l — serverda Caddy yoki Nginx + Let's Encrypt o'rnatib,
@@ -106,7 +107,8 @@ Serverdagi tizimni namoyish qilish uchun **Actions → "Demo ma'lumotlar" → Ru
 
 - `seed` — `deploy/seed/demo_seed.sql`: 32 mijoz, 16 mahsulot, oxirgi 6 oyga taqsimlangan **40 ta shartnoma**
   (savdo narxi jami ~100 mln so'm), 72 ta to'lov (naqd, Click, Payme, karta, Uzum), kechikkan
-  shartnomalar va ular bo'yicha undiruvchi harakatlari. Sanalar ishga tushirilgan kunga nisbatan hisoblanadi.
+  shartnomalar va ular bo'yicha undiruvchi harakatlari, 2 ta demo filial, 5 ta demo xodim (tizimga kira
+  olmaydi — faqat KPI va filial hisobotlari uchun) va bitta sud ishi. Sanalar ishga tushirilgan kunga nisbatan hisoblanadi.
 - `remove` — `deploy/seed/demo_remove.sql`: faqat shu demo yozuvlarni (to'lovlari bilan) o'chiradi.
   Keyin haqiqiy shartnoma ochilgan demo mijoz/mahsulot qoldiriladi.
 
@@ -142,13 +144,17 @@ Jar yig'ish: `./gradlew bootJar` → `backend/build/libs/installment-platform-0.
 
 | Paket | Vazifasi |
 |---|---|
-| `security` | JWT login, rollar (ADMIN, CREDIT_OFFICER, COLLECTOR, CASHIER), foydalanuvchilar |
+| `security` | JWT login, rollar (ADMIN, CREDIT_OFFICER, COLLECTOR, CASHIER), bo'lim darajasidagi ruxsatlar, foydalanuvchilar |
+| `branch` | Filiallar: xodim va shartnoma filialga bog'lanadi, filial kesimidagi hisobot va oylik reja |
 | `client` | Mijozlar (JShShIR bo'yicha takrorlanmaydi) |
 | `product` | Kategoriyalar va mahsulotlar (narx, standart ustama, muddat oralig'i, ombor) |
 | `scoring` | 100 ballik scoring, A/B/C/D risk toifasi, stop-faktorlar |
 | `contract` | Murobaha hisob-kitobi, shartnoma va to'lov jadvali |
 | `payment` | To'lov qabul qilish; to'lov eng eski oydan boshlab taqsimlanadi |
-| `collection` | Muddati o'tgan qarzlar, bosqichlar va undiruvchi harakatlari |
+| `collection` | Muddati o'tgan qarzlar, Soft / Hard / Legal bosqichlari, va'dalar, mas'ul xodim, sud va MIB ishlari |
+| `document` | Shartnoma, talabnoma va da'vo arizasi PDF'lari (tahrirlanadigan shablonlardan, OpenPDF) |
+| `kpi` | Operator KPI: rejalar, vaznlar, bonus — haqiqiy shartnoma, to'lov va undirish ma'lumotlaridan |
+| `forecast` | Pul oqimi prognozi: to'lov jadvallari, yig'ilish tarixi, mavsumiy koeffitsiyentlar, stsenariylar |
 | `notification` | SMS (Eskiz) va Telegram shablonlari, jurnal |
 | `jobs` | Kunlik job: kechikishlarni yangilash va eslatmalar (09:00 Toshkent vaqti) |
 | `dashboard` | KPI'lar va grafiklar |
@@ -164,7 +170,31 @@ oylik to'lov       = (moliyalashtirilgan + ustama) / muddat   (yaxlitlash qadami
 ```
 
 Kechikish uchun foiz yoki jarima qo'shilmaydi. Har bir oylik to'lov buxgalteriya uchun
-asosiy qarz va ustama qismlariga ajratib saqlanadi.
+asosiy qarz va ustama qismlariga ajratib saqlanadi. Talabnoma, da'vo arizasi va prognozda ham
+faqat to'lanmagan savdo narxi hisoblanadi.
+
+### Ruxsatlar va filiallar
+
+- Har bir rolning standart ruxsatlari `Role.defaultPermissions()` da. Administrator
+  **Sozlamalar → Rollar va ruxsatlar** da rol ruxsatlarini, **Foydalanuvchilar** da esa alohida
+  xodimga shaxsiy ruxsatlarni bera oladi. Administrator har doim barcha ruxsatlarga ega.
+- Ruxsatlar har so'rovda bazadan (keshlangan) olinadi — o'zgarish tokenni yangilamasdan amal qiladi,
+  o'chirilgan xodim darhol tizimdan chiqadi.
+- Filialga biriktirilgan xodim `ALL_BRANCHES` ruxsatisiz faqat o'z filiali shartnomalari, to'lovlari,
+  undirish ro'yxati va KPI'sini ko'radi. Filialsiz xodim (bosh ofis) — barchasini.
+
+### Operator KPI
+
+Ball = rejasi qo'yilgan ko'rsatkichlar bajarilishining vaznli o'rtachasi (har biri 150% bilan cheklanadi):
+shartnomalar soni, savdo hajmi, kassa tushumi, muddati o'tgandan undirilgan summa, undirish harakatlari,
+portfel sifati (`100 − 2 × muddati o'tgan ulush`). Bonus = bonus fondi × ball (60% dan past bo'lsa — 0,
+yuqorisi 120%). Vaznlar va chegaralar **Xodimlar KPI → KPI formulasi** da sozlanadi.
+
+### Prognoz
+
+Jadvaldagi kelgusi to'lovlar × o'z vaqtida yig'ilish ulushi (oxirgi 6 oy), muddati o'tgan qarzdan oylik
+undirish (oxirgi 3 oy) va yangi nasiyalar (mavsumdan tozalangan o'rtacha savdo × oy koeffitsiyenti).
+Koeffitsiyentlar standart (O'zbekiston chakana savdosi) yoki 12 oylik tarixdan hisoblanadi.
 
 ### SaaS'ga tayyorgarlik
 
@@ -180,16 +210,17 @@ ajratish va bir nechta instansiya uchun ShedLock qo'shish.
 ## 4. Holat va keyingi qadamlar
 
 **Tayyor:** mijozlar, mahsulotlar, scoring va stop-faktorlar, murobaha kalkulyatori,
-shartnoma yaratish wizard'i, to'lov jadvali, kassada to'lov qabul qilish, undirish ro'yxati,
-SMS/Telegram shablonlari va kunlik eslatmalar, dashboard, sozlamalar, foydalanuvchilar,
-Docker bilan deploy va zaxira nusxa.
+shartnoma yaratish wizard'i, to'lov jadvali, kassada to'lov qabul qilish, undirish
+(Soft / Hard / Legal, va'dalar, sud ishlari), SMS/Telegram shablonlari va kunlik eslatmalar,
+shartnoma / talabnoma / da'vo arizasi PDF'lari, filiallar, bo'lim darajasidagi ruxsatlar,
+operator KPI, pul oqimi prognozi, dashboard, sozlamalar, Docker bilan deploy va zaxira nusxa.
 
 **Keyingi bosqich:**
 1. Payme va Click merchant API (webhook, `external_id` bo'yicha idempotentlik tayyor).
 2. KATM (kredit tarixi) va MIB integratsiyasi: `ScoringService` dagi FRAUD/COURT/OVERDUE avtomatlashadi.
-3. Shartnoma PDF (JasperReports yoki OpenPDF) va E-IMZO.
+3. E-IMZO bilan shartnomani elektron imzolash (PDF tayyor).
 4. Telegram bot: mijoz `/start` bosib, `telegram_chat_id` ni ulaydi.
-5. Hisobotlar: Excel eksport, menejer KPI.
+5. Hisobotlar: Excel eksport.
 6. Audit log: kim, qachon, nimani o'zgartirdi.
 
 > **Eslatma:** backend kodi birinchi marta `./gradlew test` yoki `docker compose build` da

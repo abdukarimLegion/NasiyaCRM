@@ -22,6 +22,7 @@ import uz.installment.scoring.ScoringEngine;
 import uz.installment.security.AuthUser;
 
 @RestController
+@PreAuthorize("hasAnyAuthority('CONTRACTS_VIEW','PAYMENTS_ACCEPT')")
 @RequestMapping("/api/contracts")
 @RequiredArgsConstructor
 public class ContractController {
@@ -33,31 +34,34 @@ public class ContractController {
                                                @RequestParam(required = false) ScoringEngine.RiskCategory risk,
                                                @RequestParam(defaultValue = "false") boolean open,
                                                @RequestParam(required = false) String q,
+                                               @RequestParam(required = false) Long branchId,
                                                @RequestParam(defaultValue = "0") int page,
-                                               @RequestParam(defaultValue = "20") int size) {
-        return service.search(status, risk, open, q, page, size);
+                                               @RequestParam(defaultValue = "20") int size,
+                                               @AuthenticationPrincipal AuthUser me) {
+        return service.search(status, risk, open, q, me.branchScope(branchId), page, size);
     }
 
     @GetMapping("/{id}")
-    public ContractDetails get(@PathVariable Long id) {
-        return service.details(id);
+    public ContractDetails get(@PathVariable Long id, @AuthenticationPrincipal AuthUser me) {
+        return service.details(id, me);
     }
 
     @PostMapping("/quote")
+    @PreAuthorize("hasAuthority('CONTRACTS_CREATE')")
     public MurabahaCalculator.Quote quote(@Valid @RequestBody QuoteRequest req) {
         return service.quote(req);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('ADMIN','CREDIT_OFFICER')")
+    @PreAuthorize("hasAuthority('CONTRACTS_CREATE')")
     public ContractDetails create(@Valid @RequestBody CreateContractRequest req,
                                   @AuthenticationPrincipal AuthUser me) {
         return service.create(req, me);
     }
 
     @PostMapping("/{id}/cancel")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('CONTRACTS_CANCEL')")
     public ContractDetails cancel(@PathVariable Long id) {
         return service.cancel(id);
     }

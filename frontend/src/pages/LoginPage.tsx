@@ -1,11 +1,26 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../lib/auth';
-import { Btn, Field, Icon } from '../components/ui';
 import { setLang } from '../i18n';
+import { CYCLE, createParticleScene, type ParticleScene } from './login/particleScene';
+import './login/login.css';
 
-const FEATURES = ['loginFeat1', 'loginFeat2', 'loginFeat3'] as const;
-const YEAR = new Date().getFullYear();
+const CAPTIONS = ['loginCap1', 'loginCap2', 'loginCap3', 'loginCap4'] as const;
+const SLIDE_MS = 5200;
+const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function Logo() {
+  return (
+    <svg viewBox="-8 -16 116 118" aria-hidden="true">
+      <rect width="100" height="100" rx="28" fill="#0B1F18" stroke="#1F6F54" strokeWidth="1.5" />
+      <path d="M22 32H37L77 78H62Z" fill="#34D399" stroke="#34D399" strokeWidth="5" strokeLinejoin="round" />
+      <rect x="22" y="32" width="15" height="46" fill="#FFF" stroke="#FFF" strokeWidth="5" strokeLinejoin="round" />
+      <rect x="62" y="16" width="15" height="62" fill="#34D399" stroke="#34D399" strokeWidth="5" strokeLinejoin="round" />
+      <path d="M69.5-10L94 18H45Z" fill="#FCD34D" stroke="#FCD34D" strokeWidth="5" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 export default function LoginPage() {
   const { t, i18n } = useTranslation();
@@ -15,90 +30,157 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [slide, setSlide] = useState(0);
+  const [swapping, setSwapping] = useState(false);
+  const [passFocus, setPassFocus] = useState(false);
+
+  const rootRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const cardRef = useRef<HTMLElement>(null);
+  const scene = useRef<ParticleScene | null>(null);
+  const slideRef = useRef(0);
+
+  useEffect(() => {
+    const s = createParticleScene({
+      canvas: canvasRef.current!,
+      card: cardRef.current,
+      reducedMotion: reducedMotion(),
+      onLayout: (x, y) => {
+        rootRef.current?.style.setProperty('--cx', `${x}px`);
+        rootRef.current?.style.setProperty('--cy', `${y}px`);
+      },
+    });
+    scene.current = s;
+    return () => {
+      s.destroy();
+      scene.current = null;
+    };
+  }, []);
+
+  // Shakllar navbatma-navbat almashadi (parol yozilayotganda va kirishda to'xtaydi)
+  useEffect(() => {
+    if (reducedMotion() || passFocus || busy || done) return;
+    let swap: ReturnType<typeof setTimeout> | undefined;
+    const id = setInterval(() => {
+      const next = (slideRef.current + 1) % CYCLE.length;
+      slideRef.current = next;
+      scene.current?.show(CYCLE[next]);
+      setSwapping(true);
+      swap = setTimeout(() => {
+        setSlide(next);
+        setSwapping(false);
+      }, 500);
+    }, SLIDE_MS);
+    return () => {
+      clearInterval(id);
+      clearTimeout(swap);
+      setSlide(slideRef.current); // almashish o'rtasida to'xtasa, yozuv shaklga mos qolsin
+      setSwapping(false);
+    };
+  }, [passFocus, busy, done]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    if (busy) return;
+    if (!username.trim() || !password) {
+      setError(t('loginEmpty'));
+      return;
+    }
     setBusy(true);
     setError(null);
+    scene.current?.busy();
     try {
-      await login(username, password);
+      await login(username.trim(), password, async () => {
+        setDone(true);
+        scene.current?.success();
+        if (reducedMotion()) return wait(400);
+        await wait(1500);
+        scene.current?.explode();
+        await wait(700);
+      });
     } catch {
       setError(t('loginError'));
-    } finally {
+      setDone(false);
       setBusy(false);
     }
   };
 
+  const poke = () => scene.current?.poke();
+
   return (
-    <div className="login" data-theme="light">
-      <aside className="login-aside">
-        <div className="login-brand">
-          <div className="brand-mark">ن</div>
-          <div className="col" style={{ gap: 2 }}>
-            <b>{t('appName')}</b>
-            <span>{t('appTag')}</span>
-          </div>
-        </div>
+    <div ref={rootRef} className={`nl${done ? ' nl-fin' : ''}`}>
+      <div className="nl-beam" />
+      <canvas ref={canvasRef} className="nl-canvas" aria-hidden="true" />
+      <div className="nl-vignette" />
 
-        <div className="login-pitch">
-          <h2>{t('loginPitch')}</h2>
-          <ul className="login-feats">
-            {FEATURES.map((k) => (
-              <li key={k}>
-                <i><Icon name="check" size={15} /></i>
-                {t(k)}
-              </li>
-            ))}
-          </ul>
-        </div>
+      <div className="nl-top">
+        <Logo />
+        {t('appName')}
+      </div>
 
-        <p className="login-foot">© {YEAR} {t('appName')}</p>
-      </aside>
+      <div className="nl-lang" role="group" aria-label="Til">
+        {(['uz', 'ru'] as const).map((l) => (
+          <button key={l} type="button" aria-pressed={i18n.language === l} onClick={() => setLang(l)}>{l}</button>
+        ))}
+      </div>
 
-      <main className="login-main">
-        <div className="login-lang seg">
-          {(['uz', 'ru'] as const).map((l) => (
-            <button key={l} type="button" data-on={i18n.language === l} onClick={() => setLang(l)}
-              style={{ textTransform: 'uppercase', fontSize: 12 }}>{l}</button>
-          ))}
-        </div>
+      <div className={`nl-cap${swapping ? ' nl-sw' : ''}`} aria-hidden="true">
+        <b>{t(CAPTIONS[slide])}</b>
+        <i>0{slide + 1} / 0{CAPTIONS.length}</i>
+      </div>
 
-        <form className="login-card anim" onSubmit={submit}>
-          <div className="brand-mark login-mark-sm">ن</div>
+      <div className="nl-wrap">
+        <section className="nl-card" ref={cardRef}>
           <h1>{t('welcome')}</h1>
-          <p className="login-sub">{t('loginSub')}</p>
+          <p className="nl-sub">{t('loginSub')}</p>
 
-          {error && <div className="login-err"><Icon name="alert" size={17} />{error}</div>}
-
-          <Field label={t('username')}>
-            <div className="input-wrap">
-              <Icon name="user" size={18} />
-              <input className="input" autoFocus autoComplete="username" value={username}
-                data-err={error ? 'true' : undefined}
-                onChange={(e) => setUsername(e.target.value)} />
+          <form onSubmit={submit} noValidate>
+            <div className="nl-f">
+              <label htmlFor="nl-u">{t('username')}</label>
+              <div>
+                <input id="nl-u" type="text" autoFocus autoComplete="username" autoCapitalize="none"
+                  spellCheck={false} value={username} aria-invalid={!!error}
+                  onChange={(e) => { setUsername(e.target.value); poke(); }} />
+              </div>
             </div>
-          </Field>
 
-          <Field label={t('password')}>
-            <div className="input-wrap">
-              <Icon name="lock" size={18} />
-              <input className="input" data-eye="true" type={showPass ? 'text' : 'password'}
-                autoComplete="current-password" value={password}
-                data-err={error ? 'true' : undefined}
-                onChange={(e) => setPassword(e.target.value)} />
-              <button type="button" className="input-eye" onClick={() => setShowPass((v) => !v)}
-                aria-label={t('password')}>
-                <Icon name={showPass ? 'eyeOff' : 'eye'} size={18} />
-              </button>
+            <div className="nl-f">
+              <label htmlFor="nl-p">{t('password')}</label>
+              <div>
+                <input id="nl-p" type={showPass ? 'text' : 'password'} autoComplete="current-password"
+                  placeholder="••••••••" value={password} aria-invalid={!!error}
+                  onFocus={() => setPassFocus(true)} onBlur={() => setPassFocus(false)}
+                  onChange={(e) => { setPassword(e.target.value); poke(); }} />
+                <button className="nl-eye" type="button" onClick={() => setShowPass((v) => !v)}
+                  aria-label={showPass ? t('hidePassword') : t('showPassword')} aria-pressed={showPass}>
+                  <svg viewBox="0 0 24 24">
+                    <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" />
+                    <circle cx="12" cy="12" r="3" />
+                    {showPass && <path d="M3 3l18 18" />}
+                  </svg>
+                </button>
+              </div>
             </div>
-          </Field>
 
-          <Btn type="submit" size="lg" disabled={busy || !username || !password}
-            style={{ width: '100%', marginTop: 4 }}>
-            {busy ? t('loading') : t('login')}
-          </Btn>
-        </form>
-      </main>
+            <div className="nl-err" role="alert">{error}</div>
+
+            <button className={`nl-btn${busy ? ' nl-busy' : ''}`} type="submit" aria-busy={busy}>
+              <span>{busy ? t('loginChecking') : t('login')}</span>
+              <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            </button>
+          </form>
+        </section>
+      </div>
+
+      <div className="nl-end" aria-live="polite">
+        {done && (
+          <>
+            <b>{t('welcome')}</b>
+            <span>{t('loginOpening')}</span>
+          </>
+        )}
+      </div>
     </div>
   );
 }

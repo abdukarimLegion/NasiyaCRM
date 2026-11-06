@@ -15,7 +15,7 @@ const LOW_STOCK = 3;
 export default function ProductsPage() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
-  const { hasRole } = useAuth();
+  const { can } = useAuth();
   const [cat, setCat] = useState<number | ''>('');
   const [edit, setEdit] = useState<Product | 'new' | null>(null);
   const cats = useQuery({ queryKey: ['categories'], queryFn: () => api.get<Category[]>('/api/categories') });
@@ -37,7 +37,7 @@ export default function ProductsPage() {
             {t('catalogSub')}{data ? ` · ${data.length} ${t('pcs')} · ${t('stockTotal')}: ${data.reduce((a, p) => a + p.stock, 0)}` : ''}
           </span>
         </div>
-        {hasRole('ADMIN') && <Btn icon="plus" size="sm" onClick={() => setEdit('new')}>{t('addProduct')}</Btn>}
+        {can('PRODUCTS_EDIT') && <Btn icon="plus" size="sm" onClick={() => setEdit('new')}>{t('addProduct')}</Btn>}
       </div>
       <div className="row between wrap" style={{ gap: 12, marginBottom: 18 }}>
         <div className="row gap-sm wrap">
@@ -59,7 +59,7 @@ export default function ProductsPage() {
             </tr></thead>
             <tbody>
               {data?.map((p) => (
-                <tr key={p.id} onClick={() => hasRole('ADMIN') && setEdit(p)}>
+                <tr key={p.id} onClick={() => can('PRODUCTS_EDIT') && setEdit(p)}>
                   <td className="cell-main"><b>{p.name}</b></td>
                   <td className="mono faint" data-label="SKU">{p.sku || '—'}</td>
                   <td className="muted" data-label={t('category')}>{catName(p.categoryId)}</td>

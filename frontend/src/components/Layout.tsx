@@ -7,27 +7,34 @@ import type { IconName } from './icons';
 import { useAuth } from '../lib/auth';
 import { setLang } from '../i18n';
 import { api } from '../api/client';
-import type { Role, Settings } from '../api/types';
+import type { Permission, Settings } from '../api/types';
+import { useBranch } from '../lib/branch';
 
-interface NavItem { to: string; key: string; icon: IconName; roles?: Role[] }
+interface NavItem { to: string; key: string; icon: IconName; perms?: Permission[] }
 
-const NAV: { group: string; items: NavItem[] }[] = [
+// eslint-disable-next-line react-refresh/only-export-components
+export const NAV: { group: string; items: NavItem[] }[] = [
   { group: 'nav_main', items: [
-    { to: '/', key: 'dashboard', icon: 'dashboard' },
+    { to: '/', key: 'dashboard', icon: 'dashboard', perms: ['DASHBOARD_VIEW'] },
   ] },
   { group: 'nav_front', items: [
-    { to: '/new-credit', key: 'newCredit', icon: 'newcredit', roles: ['ADMIN', 'CREDIT_OFFICER'] },
-    { to: '/clients', key: 'clients', icon: 'clients' },
-    { to: '/payments', key: 'cashierNav', icon: 'payments' },
-    { to: '/products', key: 'products', icon: 'briefcase' },
-    { to: '/contracts', key: 'contracts', icon: 'contracts' },
+    { to: '/new-credit', key: 'newCredit', icon: 'newcredit', perms: ['CONTRACTS_CREATE'] },
+    { to: '/clients', key: 'clients', icon: 'clients', perms: ['CLIENTS_VIEW'] },
+    { to: '/payments', key: 'cashierNav', icon: 'payments', perms: ['PAYMENTS_VIEW'] },
+    { to: '/products', key: 'products', icon: 'briefcase', perms: ['PRODUCTS_VIEW'] },
+    { to: '/contracts', key: 'contracts', icon: 'contracts', perms: ['CONTRACTS_VIEW'] },
   ] },
   { group: 'nav_collection', items: [
-    { to: '/collection', key: 'collection', icon: 'collection', roles: ['ADMIN', 'COLLECTOR', 'CREDIT_OFFICER'] },
-    { to: '/notifications', key: 'notifications', icon: 'bell' },
+    { to: '/collection', key: 'collection', icon: 'collection', perms: ['COLLECTION_VIEW'] },
+    { to: '/notifications', key: 'notifications', icon: 'bell', perms: ['NOTIFICATIONS_VIEW'] },
+  ] },
+  { group: 'nav_analytics', items: [
+    { to: '/kpi', key: 'kpiNav', icon: 'target' },
+    { to: '/forecast', key: 'forecastNav', icon: 'trend', perms: ['FORECAST_VIEW'] },
   ] },
   { group: 'nav_system', items: [
-    { to: '/settings', key: 'settings', icon: 'settings', roles: ['ADMIN'] },
+    { to: '/branches', key: 'branchesNav', icon: 'building', perms: ['BRANCHES_VIEW'] },
+    { to: '/settings', key: 'settings', icon: 'settings', perms: ['SETTINGS_EDIT', 'USERS_MANAGE', 'DOCUMENTS_EDIT'] },
   ] },
 ];
 
@@ -48,7 +55,8 @@ function readTheme(): Theme {
 
 export default function Layout() {
   const { t, i18n } = useTranslation();
-  const { user, logout, hasRole } = useAuth();
+  const { user, logout, can } = useAuth();
+  const branch = useBranch();
   const location = useLocation();
   const [theme, setTheme] = useState<Theme>(readTheme);
   const [collapsed, setCollapsed] = useState(false);
@@ -89,7 +97,7 @@ export default function Layout() {
         </div>
         <nav className="nav">
           {NAV.map((grp) => {
-            const items = grp.items.filter((i) => !i.roles || hasRole(...i.roles));
+            const items = grp.items.filter((i) => !i.perms || can(...i.perms));
             if (items.length === 0) return null;
             return (
               <div key={grp.group}>
@@ -110,7 +118,7 @@ export default function Layout() {
             <span className="avatar">{user?.fullName.split(' ').map((p) => p[0]).join('').slice(0, 2)}</span>
             <div className="u-meta">
               <b>{user?.fullName}</b>
-              <span>{user && t(`r_${user.role}`)}</span>
+              <span>{user && t(`r_${user.role}`)}{user?.branchName ? ` · ${user.branchName}` : ''}</span>
             </div>
             <button className="iconbtn" title={t('logout')} onClick={logout}
               style={{ marginLeft: 'auto', width: 32, height: 32 }}>
@@ -137,6 +145,16 @@ export default function Layout() {
             <span className="crumb-page">{t(current?.key ?? 'dashboard')}</span>
           </div>
           <div className="topbar-spacer" />
+          {branch.canSwitch && branch.branches.length > 1 && (
+            <label className="pill-select" title={t('branch')}>
+              <Icon name="building" size={15} />
+              <select value={branch.selected ?? ''} aria-label={t('branch')}
+                onChange={(e) => branch.setSelected(e.target.value ? Number(e.target.value) : null)}>
+                <option value="">{t('allBranches')}</option>
+                {branch.branches.filter((b) => b.active).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+            </label>
+          )}
           <div className="seg" style={{ flex: 'none' }}>
             {(['uz', 'ru'] as const).map((l) => (
               <button key={l} data-on={lang === l} onClick={() => setLang(l)}

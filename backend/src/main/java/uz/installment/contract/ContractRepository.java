@@ -26,10 +26,11 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     boolean existsByClientIdAndStatus(Long clientId, ContractStatus status);
 
     /** openOnly — faqat to'lov qabul qilinadigan (ACTIVE / LATE) shartnomalar (kassa uchun). */
-    @EntityGraph(attributePaths = "client")
+    @EntityGraph(attributePaths = {"client", "branch"})
     @Query("""
             select c from Contract c
             where (:status is null or c.status = :status)
+              and (:branchId is null or c.branch.id = :branchId)
               and (:risk is null or c.riskCategory = :risk)
               and (:openOnly = false or c.status in (uz.installment.contract.ContractStatus.ACTIVE,
                                                      uz.installment.contract.ContractStatus.LATE))
@@ -38,9 +39,10 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
                            or c.client.phone like concat('%', :q, '%'))
             """)
     Page<Contract> search(@Param("status") ContractStatus status, @Param("risk") ScoringEngine.RiskCategory risk,
-                          @Param("openOnly") boolean openOnly, @Param("q") String q, Pageable pageable);
+                          @Param("openOnly") boolean openOnly, @Param("q") String q,
+                          @Param("branchId") Long branchId, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"client", "schedule"})
+    @EntityGraph(attributePaths = {"client", "schedule", "branch", "collector", "officer"})
     @Query("select c from Contract c where c.id = :id")
     Optional<Contract> findWithSchedule(@Param("id") Long id);
 
