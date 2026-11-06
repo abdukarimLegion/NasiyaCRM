@@ -1,0 +1,154 @@
+/* ============================================================
+   Login: zarrachali 3D sahna + shisha karta
+   Hamma narsa .nl ichida — ilovaning qolgan qismiga ta'sir qilmaydi.
+   ============================================================ */
+.nl {
+  --nl-bg: #02070A; --nl-ink: #E9F5F1; --nl-mut: #86A39B;
+  --nl-cy: #5EEAD4; --nl-gold: #FCD34D; --nl-bad: #F97066;
+  --nl-display: Sora, Onest, var(--font-ui), sans-serif;
+  position: fixed; inset: 0; overflow: hidden; color-scheme: dark;
+  background: radial-gradient(80% 70% at 35% 40%, #06202A, var(--nl-bg));
+  color: var(--nl-ink);
+  font-family: Onest, var(--font-ui), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.nl *, .nl *::before, .nl *::after { box-sizing: border-box; }
+
+.nl-beam {
+  position: absolute; top: -12%; left: 8%; width: 56%; height: 90%; pointer-events: none;
+  background: linear-gradient(180deg, rgba(125, 249, 220, .3), transparent 80%);
+  clip-path: polygon(42% 0, 58% 0, 100% 100%, 0 100%);
+  filter: blur(34px); opacity: .55; animation: nl-beam 9s ease-in-out infinite alternate;
+}
+@keyframes nl-beam { to { opacity: .9; transform: translateX(6%) skewX(-6deg); } }
+.nl-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
+.nl-vignette {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: radial-gradient(110% 90% at 40% 50%, transparent 55%, rgba(0, 0, 0, .6));
+}
+
+.nl-top {
+  position: absolute; z-index: 5; left: 34px; top: max(26px, env(safe-area-inset-top, 0px));
+  display: flex; align-items: center; gap: 12px;
+  font-family: var(--nl-display); font-weight: 600; font-size: 17px;
+  animation: nl-rise 1s .2s backwards;
+}
+.nl-top svg { width: 42px; height: 42px; overflow: visible; }
+
+.nl-lang {
+  position: absolute; z-index: 6; right: 26px; top: max(30px, env(safe-area-inset-top, 0px));
+  display: flex; gap: 2px; padding: 3px; border-radius: 11px;
+  background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .1);
+  animation: nl-rise 1s .3s backwards;
+}
+.nl-lang button {
+  border: 0; background: none; color: var(--nl-mut); cursor: pointer;
+  font-family: inherit; font-size: 12px; font-weight: 600; line-height: 1; text-transform: uppercase; letter-spacing: .06em;
+  padding: 7px 10px; border-radius: 8px;
+}
+.nl-lang button[aria-pressed="true"] { background: rgba(94, 234, 212, .14); color: var(--nl-cy); }
+
+.nl-cap {
+  position: absolute; z-index: 4; left: var(--cx, 30%); top: var(--cy, 80%);
+  transform: translateX(-50%); text-align: center; pointer-events: none; transition: opacity .6s;
+}
+.nl-cap b {
+  display: block; font-family: var(--nl-display); font-weight: 600;
+  font-size: clamp(14px, 1.5vw, 20px); letter-spacing: .3em; margin-right: -.3em;
+  text-transform: uppercase; color: #CFFAF0; white-space: nowrap; transition: all .8s;
+}
+.nl-cap i { display: block; margin-top: 8px; font-size: 13px; font-style: normal; color: var(--nl-mut); letter-spacing: .14em; }
+.nl-sw b { opacity: 0; filter: blur(10px); transform: translateY(8px); }
+
+.nl-wrap {
+  position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: flex-end;
+  padding: 24px 7vw; overflow: auto; perspective: 1400px; pointer-events: none;
+}
+.nl-card {
+  position: relative; width: min(410px, 100%); padding: 36px 32px 30px; border-radius: 24px;
+  background: rgba(4, 18, 22, .55);
+  backdrop-filter: blur(22px) saturate(1.5); -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  box-shadow: 0 40px 100px rgba(0, 0, 0, .6), 0 0 80px rgba(94, 234, 212, .08);
+  transform: rotateY(-7deg); transition: transform .3s ease-out; pointer-events: auto;
+  animation: nl-rise 1.2s .5s backwards;
+}
+.nl-card::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(135deg, rgba(94, 234, 212, .75), transparent 40%, rgba(139, 92, 246, .55));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+@keyframes nl-rise { from { opacity: 0; transform: translateY(30px) rotateY(-7deg); filter: blur(10px); } }
+
+.nl-card h1 { font-family: var(--nl-display); font-weight: 700; font-size: 28px; letter-spacing: -.02em; margin: 0 0 6px; color: var(--nl-ink); }
+.nl-sub { margin: 0 0 22px; color: var(--nl-mut); font-size: 15px; }
+
+.nl-f { margin-bottom: 14px; }
+.nl-f label { display: block; font-size: 13px; font-weight: 500; color: var(--nl-mut); margin: 0 0 7px; }
+.nl-f div { position: relative; }
+.nl-f input {
+  width: 100%; height: 52px; padding: 0 16px; border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .04);
+  color: var(--nl-ink); font: inherit; font-size: 16px; transition: all .25s;
+}
+.nl-f #nl-p { padding-right: 52px; }
+.nl-f input::placeholder { color: rgba(134, 163, 155, .55); }
+.nl-f input:focus {
+  outline: none; border-color: var(--nl-cy); background: rgba(94, 234, 212, .07);
+  box-shadow: 0 0 0 4px rgba(94, 234, 212, .14), 0 0 28px rgba(94, 234, 212, .2);
+}
+.nl-f input[aria-invalid="true"] { border-color: rgba(249, 112, 102, .6); }
+/* brauzer avtoto'ldirishi oq fon bermasin */
+.nl-f input:-webkit-autofill {
+  -webkit-text-fill-color: var(--nl-ink);
+  -webkit-box-shadow: 0 0 0 1000px #0A2026 inset; caret-color: var(--nl-ink);
+}
+.nl-eye {
+  position: absolute; right: 8px; top: 7px; width: 38px; height: 38px; border: 0; border-radius: 10px;
+  background: none; color: var(--nl-mut); cursor: pointer; display: grid; place-items: center;
+}
+.nl-eye:hover { color: var(--nl-ink); background: rgba(255, 255, 255, .06); }
+.nl-eye svg, .nl-btn svg {
+  width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.nl button:focus-visible { outline: 3px solid var(--nl-gold); outline-offset: 2px; }
+
+.nl-err { min-height: 22px; font-size: 14px; color: var(--nl-bad); margin: -2px 0 10px; }
+
+.nl-btn {
+  position: relative; overflow: hidden; width: 100%; height: 54px; border: 0; border-radius: 14px;
+  font: inherit; font-size: 16px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  color: #02181A; background: linear-gradient(110deg, #5EEAD4, #34D399 50%, #FCD34D);
+  box-shadow: 0 12px 34px rgba(52, 211, 153, .32); transition: transform .2s, box-shadow .2s, opacity .2s;
+}
+.nl-btn:hover { transform: translateY(-2px); box-shadow: 0 16px 40px rgba(94, 234, 212, .45); }
+.nl-busy { pointer-events: none; opacity: .85; }
+
+.nl-end {
+  position: absolute; z-index: 6; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+  text-align: center; opacity: 0; pointer-events: none; transition: opacity 1s;
+}
+.nl-end b {
+  display: block; font-family: var(--nl-display); font-weight: 700; font-size: clamp(30px, 6vw, 60px); letter-spacing: -.02em;
+  background: linear-gradient(180deg, #fff, #5EEAD4); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.nl-end span { display: block; margin-top: 10px; color: var(--nl-mut); }
+
+.nl-fin .nl-card { opacity: 0; transform: rotateY(-7deg) scale(.95); pointer-events: none; transition: all .7s; }
+.nl-fin .nl-end { opacity: 1; transition-delay: .6s; }
+.nl-fin .nl-cap, .nl-fin .nl-lang { opacity: 0; transition: opacity .6s; }
+
+@media (max-width: 900px) {
+  .nl-wrap { justify-content: center; align-items: flex-end; padding: 0 14px max(16px, env(safe-area-inset-bottom, 0px)); }
+  .nl-card { padding: 24px 20px 20px; transform: none; }
+  .nl-card h1 { font-size: 23px; }
+  .nl-sub { margin-bottom: 12px; }
+  .nl-top { left: 20px; font-size: 15px; }
+  .nl-top svg { width: 34px; height: 34px; }
+  .nl-lang { right: 16px; }
+  .nl-cap i { display: none; }
+}
+/* past va telefon ekranida aylanuvchi yozuv kartaga tegmasin */
+@media (max-width: 900px) and (max-height: 640px) { .nl-cap { display: none; } }
+@media (prefers-reduced-motion: reduce) { .nl * { animation: none !important; } }

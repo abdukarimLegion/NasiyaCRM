@@ -5,7 +5,8 @@ import type { LoginResponse, Role, UserView } from '../api/types';
 interface AuthState {
   user: UserView | null;
   ready: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  /** onVerified: parol to'g'ri chiqqach, panelga o'tishdan oldin bajariladi (masalan, animatsiya) */
+  login: (username: string, password: string, onVerified?: () => Promise<void>) => Promise<void>;
   logout: () => void;
   hasRole: (...roles: Role[]) => boolean;
 }
@@ -33,8 +34,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setReady(true));
   }, []);
 
-  const login = useCallback(async (username: string, password: string) => {
+  const login = useCallback(async (username: string, password: string, onVerified?: () => Promise<void>) => {
     const res = await api.post<LoginResponse>('/api/auth/login', { username, password });
+    if (onVerified) await onVerified();
     setToken(res.token);
     setUser(res.user);
   }, []);
