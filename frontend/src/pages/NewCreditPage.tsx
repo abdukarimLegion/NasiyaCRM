@@ -9,6 +9,7 @@ import type {
 } from '../api/types';
 import { Avatar, Badge, Btn, Card, CardHead, ErrorBox, Field, Gauge, Icon } from '../components/ui';
 import VerificationPanel from '../components/VerificationPanel';
+import { CreditReportsCard } from './ClientDetailPage';
 import { useAuth } from '../lib/auth';
 import { useBranch } from '../lib/branch';
 import { fmtDate, fmtSom } from '../lib/format';
@@ -201,6 +202,7 @@ export default function NewCreditPage() {
         </Card>
       )}
       {step === 0 && clientId != null && <div style={{ marginTop: 16 }}><VerificationPanel clientId={clientId} /></div>}
+      {step === 0 && clientId != null && <CreditReportsCard clientId={clientId} />}
 
       {step === 1 && (
         <div className="dash-grid">
@@ -235,7 +237,7 @@ export default function NewCreditPage() {
           <Card>
             <CardHead title={t('stopTitle')} />
             <div className="card-pad col" style={{ gap: 10 }}>
-              {(['BLACKLIST', 'FRAUD', 'PASSPORT_EXPIRED', 'INCOME_NOT_VERIFIED', 'COURT', 'OVERDUE', 'OVERLIMIT'] as StopFactor[]).map((s) => {
+              {(['BLACKLIST', 'FRAUD', 'PASSPORT_EXPIRED', 'INCOME_NOT_VERIFIED', 'COURT', 'OVERDUE', 'OVERLIMIT', 'EMPLOYEE_RESTRICTED'] as StopFactor[]).map((s) => {
                 const hit = scoring.data!.stopFactors.includes(s);
                 return (
                   <div key={s} className="row between" style={{ padding: '6px 0', borderBottom: '1px solid var(--border)' }}>

@@ -3,6 +3,7 @@ package uz.installment.security;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -39,12 +40,20 @@ public class UserController {
     public record CreateUser(@NotBlank @Size(max = 50) String username,
                              @NotBlank @Size(min = 8, max = 100) String password,
                              @NotBlank @Size(max = 150) String fullName,
-                             @NotNull Role role, Long branchId, List<Permission> permissions) {
+                             @NotNull Role role, Long branchId, List<Permission> permissions,
+                             Long customRoleId, @Valid Profile profile) {
     }
 
     public record UpdateUser(@NotBlank @Size(max = 150) String fullName, @NotNull Role role, boolean active,
                              @Size(min = 8, max = 100) String newPassword, Long branchId,
-                             List<Permission> permissions) {
+                             List<Permission> permissions, Long customRoleId, @Valid Profile profile) {
+    }
+
+    /** Xodim shaxsiy ma'lumotlari va nasiya cheklovi (komplayens). */
+    public record Profile(@Pattern(regexp = "^[0-9]{14}$", message = "JShShIR 14 ta raqam") String pinfl,
+                          @Size(max = 20) String passportSeries, java.time.LocalDate birthDate,
+                          @Size(max = 300) String homeAddress, @Size(max = 20) String phone,
+                          @Size(max = 150) String email, boolean allowNasiya, @Size(max = 300) String nasiyaNote) {
     }
 
     /** KPI, filial va mas'ul xodim tanlash uchun qisqa ro'yxat (barcha xodimlarga ochiq). */
@@ -83,6 +92,8 @@ public class UserController {
         u.setBranch(req.branchId() == null ? null : branches.findById(req.branchId())
                 .orElseThrow(() -> new NotFoundException("Filial", req.branchId())));
         u.setPermissions(permissionsFor(req.role(), req.permissions()));
+        u.setCustomRoleId(req.role().isAdmin() ? null : req.customRoleId());
+        applyProfile(u, req.profile());
         return auth.view(users.save(u));
     }
 
@@ -101,11 +112,35 @@ public class UserController {
         u.setBranch(req.branchId() == null ? null : branches.findById(req.branchId())
                 .orElseThrow(() -> new NotFoundException("Filial", req.branchId())));
         u.setPermissions(permissionsFor(req.role(), req.permissions()));
+        u.setCustomRoleId(req.role().isAdmin() ? null : req.customRoleId());
+        applyProfile(u, req.profile());
         if (req.newPassword() != null && !req.newPassword().isBlank()) {
             u.setPasswordHash(passwordEncoder.encode(req.newPassword()));
         }
         access.invalidate(u.getId());
         return auth.view(u);
+    }
+
+    private void applyProfile(User u, Profile p) {
+        if (p == null) {
+            return;
+        }
+        String pinfl = p.pinfl() == null || p.pinfl().isBlank() ? null : p.pinfl().trim();
+        if (pinfl != null && users.existsByPinflAndIdNot(pinfl, u.getId() == null ? -1L : u.getId())) {
+            throw new BusinessException("PINFL_TAKEN", "Bu JShShIR boshqa xodimda mavjud");
+        }
+        u.setPinfl(pinfl);
+        u.setPassportSeries(blankToNull(p.passportSeries()));
+        u.setBirthDate(p.birthDate());
+        u.setHomeAddress(blankToNull(p.homeAddress()));
+        u.setPhone(blankToNull(p.phone()));
+        u.setEmail(blankToNull(p.email()));
+        u.setAllowNasiya(p.allowNasiya());
+        u.setNasiyaNote(blankToNull(p.nasiyaNote()));
+    }
+
+    private static String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s.trim();
     }
 
     private static List<String> permissionsFor(Role role, List<Permission> requested) {

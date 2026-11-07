@@ -1,6 +1,6 @@
 /* Backend DTO'lariga mos tiplar. Pul summalari JSON'da number bo'lib keladi (so'm). */
 
-export type Role = 'ADMIN' | 'CREDIT_OFFICER' | 'COLLECTOR' | 'CASHIER';
+export type Role = 'ADMIN' | 'CREDIT_OFFICER' | 'COLLECTOR' | 'CASHIER' | 'RISK_ANALYST' | 'LEGAL_OFFICER' | 'BRANCH_MANAGER';
 export type ContractStatus = 'DRAFT' | 'ACTIVE' | 'LATE' | 'CLOSED' | 'CANCELLED';
 export type ScheduleStatus = 'PENDING' | 'PARTIAL' | 'PAID' | 'LATE';
 export type RiskCategory = 'A' | 'B' | 'C' | 'D';
@@ -8,7 +8,7 @@ export type Decision = 'APPROVED' | 'REVIEW' | 'REJECTED';
 export type Factor = 'INCOME' | 'TENURE' | 'FAMILY' | 'HISTORY' | 'DISCIPLINE' | 'GUARANTOR';
 export type StopFactor =
   | 'BLACKLIST' | 'FRAUD' | 'DUP_PINFL' | 'PASSPORT_EXPIRED'
-  | 'INCOME_NOT_VERIFIED' | 'COURT' | 'OVERDUE' | 'OVERLIMIT';
+  | 'INCOME_NOT_VERIFIED' | 'COURT' | 'OVERDUE' | 'OVERLIMIT' | 'EMPLOYEE_RESTRICTED';
 export type PaymentMethod = 'CASH' | 'CARD' | 'PAYME' | 'CLICK' | 'UZUM' | 'BANK_TRANSFER';
 export type Channel = 'SMS' | 'TELEGRAM' | 'BOTH';
 
@@ -41,6 +41,41 @@ export interface UserView {
   permissions: Permission[];
   /** true — xodimga rolidan farqli shaxsiy ruxsatlar berilgan */
   customPermissions: boolean;
+  customRoleId?: number;
+  pinfl?: string;
+  passportSeries?: string;
+  birthDate?: string;
+  homeAddress?: string;
+  phone?: string;
+  email?: string;
+  allowNasiya: boolean;
+  nasiyaNote?: string;
+}
+
+export interface CustomRole {
+  id: number;
+  name: string;
+  description?: string;
+  color: string;
+  baseRole: Role;
+  permissions: Permission[];
+  users: number;
+}
+
+export interface CreditReport {
+  id: number;
+  source: string;
+  reportDate: string;
+  score?: number;
+  rating?: 'A' | 'B' | 'C' | 'D' | 'E';
+  activeLoans: number;
+  totalDebt: number;
+  monthlyObligation: number;
+  overdueFlag: boolean;
+  maxOverdueDays: number;
+  note?: string;
+  enteredBy?: string;
+  createdAt: string;
 }
 
 export interface UserBrief {

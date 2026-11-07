@@ -25,7 +25,12 @@ DELETE FROM collection_actions WHERE contract_id IN (SELECT id FROM demo_contrac
 DELETE FROM legal_cases WHERE contract_id IN (SELECT id FROM demo_contracts);
 DELETE FROM document_log WHERE contract_id IN (SELECT id FROM demo_contracts);
 DELETE FROM payments WHERE contract_id IN (SELECT id FROM demo_contracts);   -- taqsimotlar cascade
-DELETE FROM contracts WHERE id IN (SELECT id FROM demo_contracts);           -- jadval cascade
+UPDATE applications SET contract_id = NULL WHERE contract_id IN (SELECT id FROM demo_contracts);
+DELETE FROM contracts WHERE id IN (SELECT id FROM demo_contracts);           -- jadval va mahsulot qatorlari cascade
+-- demo mijozlarning shartnomaga aylanmagan arizalari va tasdiqlashlari
+DELETE FROM applications
+ WHERE client_id IN (SELECT id FROM demo_seed_rows WHERE tbl = 'clients') AND status <> 'CONTRACTED';
+DELETE FROM client_verifications WHERE client_id IN (SELECT id FROM demo_seed_rows WHERE tbl = 'clients');
 
 -- keyin haqiqiy shartnoma ochilgan mijoz/mahsulot qoldiriladi
 DELETE FROM clients c
@@ -44,9 +49,16 @@ UPDATE payments SET cashier_id = NULL WHERE cashier_id IN (SELECT id FROM demo_u
 UPDATE collection_actions SET user_id = NULL WHERE user_id IN (SELECT id FROM demo_users);
 UPDATE legal_cases SET assigned_user_id = NULL WHERE assigned_user_id IN (SELECT id FROM demo_users);
 UPDATE document_log SET user_id = NULL WHERE user_id IN (SELECT id FROM demo_users);
+UPDATE applications SET officer_id = NULL WHERE officer_id IN (SELECT id FROM demo_users);
+UPDATE applications SET decided_by = NULL WHERE decided_by IN (SELECT id FROM demo_users);
+UPDATE client_verifications SET created_by = NULL WHERE created_by IN (SELECT id FROM demo_users);
+UPDATE credit_reports SET entered_by = NULL WHERE entered_by IN (SELECT id FROM demo_users);
+UPDATE purchase_orders SET created_by = NULL WHERE created_by IN (SELECT id FROM demo_users);
+UPDATE purchase_orders SET approved_by = NULL WHERE approved_by IN (SELECT id FROM demo_users);
 DELETE FROM users WHERE id IN (SELECT id FROM demo_users);
 UPDATE users SET branch_id = NULL WHERE branch_id IN (SELECT id FROM demo_seed_rows WHERE tbl = 'branches');
 UPDATE contracts SET branch_id = NULL WHERE branch_id IN (SELECT id FROM demo_seed_rows WHERE tbl = 'branches');
+UPDATE applications SET branch_id = NULL WHERE branch_id IN (SELECT id FROM demo_seed_rows WHERE tbl = 'branches');
 DELETE FROM branches WHERE id IN (SELECT id FROM demo_seed_rows WHERE tbl = 'branches');
 
 DROP TABLE demo_seed_rows;

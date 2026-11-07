@@ -1,10 +1,10 @@
 import { Fragment, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
-import type { ClientDetails } from '../api/types';
-import { Avatar, Btn, Card, CardHead, ContractStatusBadge, Empty, ErrorBox, Icon, Loading, RiskPill } from '../components/ui';
+import type { ClientDetails, CreditReport } from '../api/types';
+import { Avatar, Badge, Btn, Card, CardHead, ContractStatusBadge, Empty, ErrorBox, Field, Icon, Loading, Modal, RiskPill } from '../components/ui';
 import { useAuth } from '../lib/auth';
 import { fmtDate, fmtSom } from '../lib/format';
 import ClientForm from './ClientForm';
@@ -84,7 +84,93 @@ export default function ClientDetailPage() {
           </div>
         </Card>
       </div>
+      <CreditReportsCard clientId={c.id} />
       {editing && <ClientForm initial={c} onClose={() => setEditing(false)} />}
     </div>
+  );
+}
+
+const RATING_TONE = { A: 'success', B: 'success', C: 'warn', D: 'danger', E: 'danger' } as const;
+
+/** Kredit tarixi (KATM / tashqi byuro): ma'lumotlar qo'lda kiritiladi, oxirgisi nasiya wizard'ida ko'rinadi. */
+export function CreditReportsCard({ clientId }: { clientId: number }) {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
+  const { can } = useAuth();
+  const [adding, setAdding] = useState(false);
+  const q = useQuery({ queryKey: ['credit-reports', clientId], queryFn: () => api.get<CreditReport[]>(`/api/clients/${clientId}/credit-reports`) });
+  return (
+    <Card className="block">
+      <CardHead title={<><Icon name="shieldCheck" size={16} /> {t('creditHistory')}</>} sub={t('creditHistorySub')}
+        right={can('CLIENTS_EDIT') && <Btn size="sm" icon="plus" onClick={() => setAdding(true)}>{t('addReport')}</Btn>} />
+      <ErrorBox error={q.error} />
+      <div className="table-wrap">
+        <table className="tbl">
+          <thead><tr>
+            <th>{t('date')}</th><th>{t('source')}</th><th>{t('rating')}</th><th className="num">{t('score')}</th>
+            <th className="num">{t('activeLoans')}</th><th className="num">{t('totalDebtShort')}</th><th className="num">{t('monthlyObligation')}</th><th>{t('overdue')}</th>
+          </tr></thead>
+          <tbody>
+            {q.data?.map((r) => (
+              <tr key={r.id} style={{ cursor: 'default' }}>
+                <td className="cell-main"><b>{fmtDate(r.reportDate, lang)}</b></td>
+                <td data-label={t('source')}>{r.source}</td>
+                <td data-label={t('rating')}>{r.rating ? <Badge tone={RATING_TONE[r.rating]}>{r.rating}</Badge> : '—'}</td>
+                <td className="num mono" data-label={t('score')}>{r.score ?? '—'}</td>
+                <td className="num mono" data-label={t('activeLoans')}>{r.activeLoans}</td>
+                <td className="num mono" data-label={t('totalDebtShort')}>{fmtSom(r.totalDebt, lang)}</td>
+                <td className="num mono" data-label={t('monthlyObligation')}>{fmtSom(r.monthlyObligation, lang)}</td>
+                <td data-label={t('overdue')}>{r.overdueFlag ? <Badge tone="danger" dot>{r.maxOverdueDays} {t('days')}</Badge> : <Badge tone="success"><Icon name="check" size={13} /></Badge>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {q.data && q.data.length === 0 && <Empty>{t('creditHistoryEmpty')}</Empty>}
+      {adding && <CreditReportModal clientId={clientId} onClose={() => setAdding(false)} />}
+    </Card>
+  );
+}
+
+function CreditReportModal({ clientId, onClose }: { clientId: number; onClose: () => void }) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const [d, setD] = useState({
+    source: 'KATM', reportDate: new Date().toISOString().slice(0, 10), score: '', rating: '', activeLoans: 0,
+    totalDebt: 0, monthlyObligation: 0, overdueFlag: false, maxOverdueDays: 0, note: '',
+  });
+  const save = useMutation({
+    mutationFn: () => api.post(`/api/clients/${clientId}/credit-reports`, {
+      ...d, score: d.score === '' ? null : Number(d.score), rating: d.rating || null, note: d.note || null,
+    }),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['credit-reports', clientId] }); onClose(); },
+  });
+  const num = (k: 'activeLoans' | 'totalDebt' | 'monthlyObligation' | 'maxOverdueDays', label: string) => (
+    <Field label={label}><input className="input mono" type="number" min={0} value={d[k]} onChange={(e) => setD({ ...d, [k]: Number(e.target.value) })} /></Field>
+  );
+  return (
+    <Modal wide title={t('addReport')} onClose={onClose}
+      footer={<><Btn variant="ghost" onClick={onClose}>{t('cancel')}</Btn><Btn icon="check" disabled={save.isPending} onClick={() => save.mutate()}>{t('save')}</Btn></>}>
+      <div className="col" style={{ gap: 14 }}>
+        <ErrorBox error={save.error} />
+        <span className="faint" style={{ fontSize: 12 }}>{t('creditManualHint')}</span>
+        <div className="form-grid">
+          <Field label={t('source')}><input className="input" value={d.source} maxLength={30} onChange={(e) => setD({ ...d, source: e.target.value })} /></Field>
+          <Field label={t('date')} req><input className="input" type="date" value={d.reportDate} onChange={(e) => setD({ ...d, reportDate: e.target.value })} /></Field>
+          <Field label={t('score')}><input className="input mono" type="number" min={0} max={1000} value={d.score} onChange={(e) => setD({ ...d, score: e.target.value })} /></Field>
+          <Field label={t('rating')}>
+            <select className="select" value={d.rating} onChange={(e) => setD({ ...d, rating: e.target.value })}>
+              <option value="">—</option>{['A', 'B', 'C', 'D', 'E'].map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </Field>
+          {num('activeLoans', t('activeLoans'))}
+          {num('totalDebt', t('totalDebtShort'))}
+          {num('monthlyObligation', t('monthlyObligation'))}
+          {num('maxOverdueDays', t('maxOverdueDays'))}
+        </div>
+        <label className="check-row"><input type="checkbox" checked={d.overdueFlag} onChange={(e) => setD({ ...d, overdueFlag: e.target.checked })} />{t('hasOverdue')}</label>
+        <Field label={t('note')}><input className="input" maxLength={500} value={d.note} onChange={(e) => setD({ ...d, note: e.target.value })} /></Field>
+      </div>
+    </Modal>
   );
 }

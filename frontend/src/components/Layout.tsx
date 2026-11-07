@@ -41,9 +41,12 @@ export const NAV: { group: string; items: NavItem[] }[] = [
   ] },
 ];
 
-const THEMES = ['light-emerald', 'light-blue', 'dark-slate'] as const;
+const THEMES = ['light-emerald', 'light-blue', 'light-violet', 'light-amber', 'light-rose', 'light-teal', 'dark-slate'] as const;
 type Theme = (typeof THEMES)[number];
-const THEME_SWATCH: Record<Theme, string> = { 'light-emerald': '#059669', 'light-blue': '#2563eb', 'dark-slate': '#0f172a' };
+const THEME_SWATCH: Record<Theme, string> = {
+  'light-emerald': '#059669', 'light-blue': '#2563eb', 'light-violet': '#7c3aed', 'light-amber': '#d97706',
+  'light-rose': '#e11d48', 'light-teal': '#0891b2', 'dark-slate': '#0f172a',
+};
 
 /** Saqlangan mavzu; eski "light"/"dark" qiymatlari yangi nomlarga o'tkaziladi */
 function readTheme(): Theme {

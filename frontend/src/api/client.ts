@@ -113,3 +113,30 @@ export function qs(params: Record<string, string | number | boolean | null | und
   const s = p.toString();
   return s ? `?${s}` : '';
 }
+
+/** Faylni (masalan, ZIP) yuklab olish: token bilan so'rov, so'ng brauzer orqali saqlash. */
+export async function downloadFile(method: 'GET' | 'POST', path: string, fallbackName: string): Promise<void> {
+  const headers: Record<string, string> = {};
+  const token = getToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(BASE + path, { method, headers });
+  if (!res.ok) {
+    let data: { code?: string; detail?: string } = {};
+    try {
+      data = await res.json();
+    } catch {
+      /* bo'sh javob */
+    }
+    throw new ApiError(res.status, data.code ?? String(res.status), data.detail ?? res.statusText);
+  }
+  const cd = res.headers.get('Content-Disposition') ?? '';
+  const m = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(cd);
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = m ? decodeURIComponent(m[1]) : fallbackName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}

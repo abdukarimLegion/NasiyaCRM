@@ -3,14 +3,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Navigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../api/client';
-import type { AdvancedSettings, DocCode, DocTemplate, Partner, Permission, PermissionMatrix, Role, Settings, UserView } from '../api/types';
+import type { AdvancedSettings, CustomRole, DocCode, DocTemplate, Partner, Permission, PermissionMatrix, Role, Settings, UserView } from '../api/types';
 import { Avatar, Badge, Btn, Card, CardHead, Empty, ErrorBox, Field, Icon, Modal } from '../components/ui';
 import { Tabs, type TabItem } from '../components/viz';
 import { useAuth } from '../lib/auth';
 import { useBranch } from '../lib/branch';
 import { fmtDateTime } from '../lib/format';
 
-const ROLES: Role[] = ['ADMIN', 'CREDIT_OFFICER', 'COLLECTOR', 'CASHIER'];
+const ROLES: Role[] = ['ADMIN', 'CREDIT_OFFICER', 'COLLECTOR', 'CASHIER', 'BRANCH_MANAGER', 'RISK_ANALYST', 'LEGAL_OFFICER'];
 const SECTIONS = ['dashboard', 'clients', 'contracts', 'payments', 'products', 'collection', 'notifications', 'analytics', 'branches', 'system'];
 
 export default function SettingsPage() {
@@ -36,7 +36,7 @@ export default function SettingsPage() {
       <Tabs items={items} />
       {current === 'general' && <><GeneralCard /><AdvancedCard /></>}
       {current === 'users' && <UsersCard />}
-      {current === 'roles' && <RolesCard />}
+      {current === 'roles' && <><RolesCard /><CustomRolesCard /></>}
       {current === 'partners' && <PartnersCard />}
       {current === 'documents' && <DocumentsCard />}
     </div>
@@ -280,7 +280,15 @@ function UserModal({ user, onClose }: { user: UserView | null; onClose: () => vo
   const [password, setPassword] = useState('');
   const [custom, setCustom] = useState(user?.customPermissions ?? false);
   const [perms, setPerms] = useState<Set<Permission>>(new Set(user?.permissions ?? []));
-  const roleDefaults = matrix.data?.roles.find((r) => r.role === role)?.permissions ?? [];
+  const customRoles = useQuery({ queryKey: ['custom-roles'], queryFn: () => api.get<CustomRole[]>('/api/permissions/custom-roles') });
+  const [customRoleId, setCustomRoleId] = useState<number | ''>(user?.customRoleId ?? '');
+  const [profile, setProfile] = useState({
+    pinfl: user?.pinfl ?? '', passportSeries: user?.passportSeries ?? '', birthDate: user?.birthDate ?? '',
+    homeAddress: user?.homeAddress ?? '', phone: user?.phone ?? '', email: user?.email ?? '',
+    allowNasiya: user?.allowNasiya ?? false, nasiyaNote: user?.nasiyaNote ?? '',
+  });
+  const cr = customRoles.data?.find((x) => x.id === customRoleId);
+  const roleDefaults = cr?.permissions ?? matrix.data?.roles.find((r) => r.role === role)?.permissions ?? [];
 
   // Shaxsiy ruxsatlar yoqilganda — rol ruxsatlaridan boshlanadi
   const enableCustom = (on: boolean) => {
@@ -292,6 +300,8 @@ function UserModal({ user, onClose }: { user: UserView | null; onClose: () => vo
       const body = {
         fullName, role, active, branchId: branchId === '' ? null : branchId,
         permissions: custom && role !== 'ADMIN' ? [...perms] : null,
+        customRoleId: role !== 'ADMIN' && customRoleId !== '' ? customRoleId : null,
+        profile: { ...profile, birthDate: profile.birthDate || null },
       };
       return user
         ? api.put(`/api/users/${user.id}`, { ...body, newPassword: password || undefined })
@@ -321,6 +331,14 @@ function UserModal({ user, onClose }: { user: UserView | null; onClose: () => vo
               {ROLES.map((r) => <option key={r} value={r}>{t(`r_${r}`)}</option>)}
             </select>
           </Field>
+          {role !== 'ADMIN' && (
+            <Field label={t('customRole')} hint={t('customRoleHint')}>
+              <select className="select" value={customRoleId} onChange={(e) => { setCustomRoleId(e.target.value ? Number(e.target.value) : ''); setCustom(false); }}>
+                <option value="">—</option>
+                {customRoles.data?.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+              </select>
+            </Field>
+          )}
           <Field label={t('branch')} hint={t('branchUserHint')}>
             <select className="select" value={branchId} onChange={(e) => setBranchId(e.target.value ? Number(e.target.value) : '')}>
               <option value="">{t('headOffice')}</option>
@@ -332,6 +350,22 @@ function UserModal({ user, onClose }: { user: UserView | null; onClose: () => vo
           </Field>
         </div>
         {user && !isSelf && <label className="check-row"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />{t('active')}</label>}
+
+        <div className="divider" />
+        <b style={{ fontSize: 13 }}>{t('employeeProfile')}</b>
+        <div className="form-grid">
+          <Field label={t('pinfl')} hint={t('employeePinflHint')}>
+            <input className="input mono" maxLength={14} value={profile.pinfl} onChange={(e) => setProfile({ ...profile, pinfl: e.target.value.replace(/\D/g, '') })} />
+          </Field>
+          <Field label={t('passport')}><input className="input" value={profile.passportSeries} onChange={(e) => setProfile({ ...profile, passportSeries: e.target.value })} /></Field>
+          <Field label={t('birth')}><input className="input" type="date" value={profile.birthDate} onChange={(e) => setProfile({ ...profile, birthDate: e.target.value })} /></Field>
+          <Field label={t('phone')}><input className="input" value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} /></Field>
+          <Field label="Email"><input className="input" type="email" value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} /></Field>
+          <Field label={t('address')}><input className="input" value={profile.homeAddress} onChange={(e) => setProfile({ ...profile, homeAddress: e.target.value })} /></Field>
+        </div>
+        <label className="check-row"><input type="checkbox" checked={profile.allowNasiya} onChange={(e) => setProfile({ ...profile, allowNasiya: e.target.checked })} />{t('allowNasiya')}</label>
+        {!profile.allowNasiya && <span className="faint" style={{ fontSize: 12 }}>{t('allowNasiyaOff')}</span>}
+        <Field label={t('nasiyaNote')}><input className="input" maxLength={300} value={profile.nasiyaNote} onChange={(e) => setProfile({ ...profile, nasiyaNote: e.target.value })} /></Field>
 
         {role !== 'ADMIN' && matrix.data && (
           <>
@@ -458,6 +492,93 @@ function RolesCard() {
         </table>
       </div>
     </Card>
+  );
+}
+
+/* ------------------------------------------------------------------ shaxsiy rollar */
+
+function CustomRolesCard() {
+  const { t } = useTranslation();
+  const [edit, setEdit] = useState<CustomRole | 'new' | null>(null);
+  const list = useQuery({ queryKey: ['custom-roles'], queryFn: () => api.get<CustomRole[]>('/api/permissions/custom-roles') });
+  return (
+    <Card>
+      <CardHead title={t('customRoles')} sub={t('customRolesSub')} right={<Btn size="sm" icon="plus" onClick={() => setEdit('new')}>{t('addCustomRole')}</Btn>} />
+      <ErrorBox error={list.error} />
+      <div className="table-wrap">
+        <table className="tbl">
+          <thead><tr><th>{t('name')}</th><th>{t('baseRole')}</th><th className="num">{t('permissions')}</th><th className="num">{t('users')}</th></tr></thead>
+          <tbody>
+            {list.data?.map((r) => (
+              <tr key={r.id} onClick={() => setEdit(r)}>
+                <td className="cell-main">
+                  <div className="row" style={{ gap: 8 }}>
+                    <i className="fin-dot" style={{ background: r.color, width: 12, height: 12, borderRadius: 4 }} />
+                    <div className="col" style={{ gap: 1 }}><b>{r.name}</b>{r.description && <span className="faint" style={{ fontSize: 11.5 }}>{r.description}</span>}</div>
+                  </div>
+                </td>
+                <td data-label={t('baseRole')}>{t(`r_${r.baseRole}`)}</td>
+                <td className="num mono" data-label={t('permissions')}>{r.permissions.length}</td>
+                <td className="num mono" data-label={t('users')}>{r.users}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {list.data && list.data.length === 0 && <Empty />}
+      {edit && <CustomRoleModal role={edit === 'new' ? null : edit} onClose={() => setEdit(null)} />}
+    </Card>
+  );
+}
+
+function CustomRoleModal({ role, onClose }: { role: CustomRole | null; onClose: () => void }) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const { refresh } = useAuth();
+  const matrix = useQuery({ queryKey: ['permissions'], queryFn: () => api.get<PermissionMatrix>('/api/permissions') });
+  const [name, setName] = useState(role?.name ?? '');
+  const [description, setDescription] = useState(role?.description ?? '');
+  const [color, setColor] = useState(role?.color ?? '#7c3aed');
+  const [baseRole, setBaseRole] = useState<Role>(role?.baseRole ?? 'CREDIT_OFFICER');
+  const [perms, setPerms] = useState<Set<Permission>>(new Set(role?.permissions ?? []));
+  const done = () => {
+    void qc.invalidateQueries({ queryKey: ['custom-roles'] });
+    void qc.invalidateQueries({ queryKey: ['users'] });
+    void refresh();
+    onClose();
+  };
+  const save = useMutation({
+    mutationFn: () => {
+      const body = { name, description: description || undefined, color, baseRole, permissions: [...perms] };
+      return role ? api.put(`/api/permissions/custom-roles/${role.id}`, body) : api.post('/api/permissions/custom-roles', body);
+    },
+    onSuccess: done,
+  });
+  const remove = useMutation({ mutationFn: () => api.del(`/api/permissions/custom-roles/${role!.id}`), onSuccess: done });
+  return (
+    <Modal wide title={role ? role.name : t('addCustomRole')} onClose={onClose}
+      footer={<>
+        {role && <Btn variant="ghost" icon="x" disabled={remove.isPending} onClick={() => remove.mutate()}>{t('delete')}</Btn>}
+        <Btn variant="ghost" onClick={onClose}>{t('cancel')}</Btn>
+        <Btn icon="check" disabled={!name || save.isPending} onClick={() => save.mutate()}>{t('save')}</Btn>
+      </>}>
+      <div className="col" style={{ gap: 14 }}>
+        <ErrorBox error={save.error ?? remove.error} />
+        <div className="form-grid">
+          <Field label={t('name')} req><input className="input" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} /></Field>
+          <Field label={t('baseRole')} hint={t('baseRoleHint')}>
+            <select className="select" value={baseRole} onChange={(e) => setBaseRole(e.target.value as Role)}>
+              {ROLES.filter((r) => r !== 'ADMIN').map((r) => <option key={r} value={r}>{t(`r_${r}`)}</option>)}
+            </select>
+          </Field>
+          <Field label={t('description')}><input className="input" value={description} maxLength={200} onChange={(e) => setDescription(e.target.value)} /></Field>
+          <Field label={t('color')}>
+            <div className="row gap-sm"><input type="color" value={color} onChange={(e) => setColor(e.target.value)} /><input className="input mono" value={color} onChange={(e) => setColor(e.target.value)} /></div>
+          </Field>
+        </div>
+        {matrix.data && <PermissionChecklist matrix={matrix.data} value={perms} onChange={setPerms} />}
+      </div>
+    </Modal>
   );
 }
 
