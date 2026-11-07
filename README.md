@@ -103,16 +103,40 @@ serverda build qilinmaydi — tayyor image'lar `ghcr.io` dan tortiladi.
 
 ### Namoyish (demo) ma'lumotlari
 
-Serverdagi tizimni namoyish qilish uchun **Actions → "Demo ma'lumotlar" → Run workflow**:
+`deploy/seed/demo_seed.sql` **barcha bo'limlar** uchun namoyish ma'lumotini yuklaydi va
+**idempotent**: qayta ishga tushirilsa mavjud demo yozuvlar takrorlanmaydi.
 
-- `seed` — `deploy/seed/demo_seed.sql`: 32 mijoz, 16 mahsulot, oxirgi 6 oyga taqsimlangan **40 ta shartnoma**
-  (savdo narxi jami ~100 mln so'm), 72 ta to'lov (naqd, Click, Payme, karta, Uzum), kechikkan
-  shartnomalar va ular bo'yicha undiruvchi harakatlari, 2 ta demo filial, 5 ta demo xodim (tizimga kira
-  olmaydi — faqat KPI va filial hisobotlari uchun) va bitta sud ishi. Sanalar ishga tushirilgan kunga nisbatan hisoblanadi.
-- `remove` — `deploy/seed/demo_remove.sql`: faqat shu demo yozuvlarni (to'lovlari bilan) o'chiradi.
-  Keyin haqiqiy shartnoma ochilgan demo mijoz/mahsulot qoldiriladi.
+Qamrov: 32 mijoz, 16 mahsulot, oxirgi 6 oyga taqsimlangan **40 ta shartnoma** (~100 mln so'm savdo),
+72 ta to'lov, arizalar (kutilayotgan/tasdiqlangan/shartnomaga aylangan/rad etilgan/hamkorga topshirilgan),
+kredit tarixi hisobotlari, OTP va biometrik verifikatsiya, undirish harakatlari, sud ishlari, hamkor
+(Alif/Uzum/TBC) savdolari, yetkazib beruvchilar va xarid buyurtmalari, hujjatlar jurnali, SMS
+bildirishnomalar jurnali, 2 ta demo filial, 5 ta demo xodim (tizimga kira olmaydi — faqat KPI va
+filial hisobotlari uchun), KPI rejalari va 3 ta shaxsiy rol. Sanalar ishga tushirilgan kunga
+nisbatan hisoblanadi.
 
-> **Haqiqiy ishga tushishdan oldin `remove` qiling.** Demo mijozlarning telefon raqamlari tasodifiy;
+Yuklash usullari:
+
+1. **Deploy qadamida avtomatik** — GitHub repo *Settings → Variables* da `SEED_DEMO=1` qo'ying.
+   Keyingi deploy'da `deploy/remote-deploy.sh` baza ko'tarilgach seed'ni o'zi ishga tushiradi
+   (idempotent bo'lgani uchun har deploy'da xavfsiz).
+2. **Serverda qo'lda** (tavsiya etiladi):
+   ```bash
+   cd /opt/nasiya
+   ./deploy/seed-demo.sh            # yuklash
+   ./deploy/seed-demo.sh --remove   # faqat demo ma'lumotlarni o'chirish
+   ```
+3. **Actions orqali** — *Actions → "Demo ma'lumotlar" → Run workflow* (`seed` yoki `remove`).
+4. **To'g'ridan-to'g'ri psql bilan**:
+   ```bash
+   docker compose -f docker-compose.prod.yml exec -T db \
+     sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+     < deploy/seed/demo_seed.sql
+   ```
+
+`remove` faqat demo yozuvlarni (to'lovlari, hujjatlari va jurnallari bilan) o'chiradi; haqiqiy
+shartnoma ochilgan demo mijoz/mahsulot bo'lsa, ular saqlanadi.
+
+> **Haqiqiy ishga tushishdan oldin `--remove` qiling.** Demo mijozlarning telefon raqamlari tasodifiy;
 > `APP_SMS_PROVIDER=eskiz` yoqilsa, kunlik eslatmalar shu raqamlarga ketadi.
 
 ## 2. Dasturchi uchun: lokal ishga tushirish

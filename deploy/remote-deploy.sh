@@ -80,6 +80,18 @@ if [ "$healthy" != true ]; then
 fi
 echo "Backend UP. Tizim: http://SERVER_IP:${HTTP_PORT}"
 
+# ---- 3.5. Ixtiyoriy: to'liq demo ma'lumotlarni yuklash (SEED_DEMO=1) ----
+# Skript idempotent — har deploy'da ishga tushsa ham takroriy yozuv qo'shmaydi.
+if [ "${SEED_DEMO:-0}" = "1" ]; then
+  SEED_FILE="$DEPLOY_PATH/deploy/seed/demo_seed.sql"
+  if [ -f "$SEED_FILE" ]; then
+    echo "Demo ma'lumotlar yuklanmoqda (idempotent)..."
+    compose exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < "$SEED_FILE"
+  else
+    echo "OGOHLANTIRISH: SEED_DEMO=1, lekin $SEED_FILE topilmadi — o'tkazib yuborildi."
+  fi
+fi
+
 # ---- 4. Faqat shu loyihaning eski image'larini tozalash (oxirgi 3 tasi qoladi) ----
 for img in "$BACKEND_IMAGE" "$FRONTEND_IMAGE"; do
   docker images "${img%:*}" --format '{{.Repository}}:{{.Tag}}' \
