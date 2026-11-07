@@ -240,3 +240,7 @@
 .prov-row[data-on="true"] { border-color: var(--primary); background: var(--primary-soft); }
 .prov-row:disabled { opacity: .55; cursor: not-allowed; }
 .fin-dot { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 4px; }
+
+/* ---- Ombor ---- */
+.wh-sug { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.wh-sug-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; flex-wrap: wrap; }

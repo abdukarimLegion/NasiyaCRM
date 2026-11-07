@@ -23,6 +23,7 @@ export const NAV: { group: string; items: NavItem[] }[] = [
     { to: '/clients', key: 'clients', icon: 'clients', perms: ['CLIENTS_VIEW'] },
     { to: '/payments', key: 'cashierNav', icon: 'payments', perms: ['PAYMENTS_VIEW'] },
     { to: '/products', key: 'products', icon: 'briefcase', perms: ['PRODUCTS_VIEW'] },
+    { to: '/warehouse', key: 'warehouseNav', icon: 'box', perms: ['PRODUCTS_VIEW'] },
     { to: '/contracts', key: 'contracts', icon: 'contracts', perms: ['CONTRACTS_VIEW'] },
   ] },
   { group: 'nav_collection', items: [

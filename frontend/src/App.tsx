@@ -16,6 +16,7 @@ import ContractDetailPage from './pages/ContractDetailPage';
 import PaymentsPage from './pages/PaymentsPage';
 import CollectionPage from './pages/CollectionPage';
 import ProductsPage from './pages/ProductsPage';
+import WarehousePage from './pages/WarehousePage';
 import NotificationsPage from './pages/NotificationsPage';
 import SettingsPage from './pages/SettingsPage';
 import KpiPage from './pages/KpiPage';
@@ -72,6 +73,7 @@ export default function App() {
         <Route path="payments" element={<Guard perms={['PAYMENTS_VIEW']}><PaymentsPage /></Guard>} />
         <Route path="collection/:stage?" element={<Guard perms={['COLLECTION_VIEW']}><CollectionPage /></Guard>} />
         <Route path="products" element={<Guard perms={['PRODUCTS_VIEW']}><ProductsPage /></Guard>} />
+        <Route path="warehouse" element={<Guard perms={['PRODUCTS_VIEW']}><WarehousePage /></Guard>} />
         <Route path="notifications" element={<Guard perms={['NOTIFICATIONS_VIEW']}><NotificationsPage /></Guard>} />
         <Route path="kpi" element={<KpiPage />} />
         <Route path="analytics" element={<Guard perms={['ANALYTICS_VIEW']}><AnalyticsPage /></Guard>} />

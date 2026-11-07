@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, qs } from '../api/client';
-import type { Category, Product } from '../api/types';
+import type { Category, Product, Supplier } from '../api/types';
 import { Badge, Btn, Card, Empty, ErrorBox, Field, Icon, Modal } from '../components/ui';
 import { useAuth } from '../lib/auth';
 import { fmtSom } from '../lib/format';
@@ -93,6 +93,7 @@ function ProductModal({ product, categories, onClose }: { product: Product | nul
     ? { ...product }
     : { categoryId: categories[0]?.id ?? 0, name: '', price: 0, markupPct: 20, termMin: 3, termMax: 12, stock: 0, active: true });
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((s) => ({ ...s, [k]: v }));
+  const suppliers = useQuery({ queryKey: ['suppliers'], queryFn: () => api.get<Supplier[]>('/api/warehouse/suppliers') });
   const save = useMutation({
     mutationFn: () => (product ? api.put(`/api/products/${product.id}`, d) : api.post('/api/products', d)),
     onSuccess: () => {
@@ -116,6 +117,12 @@ function ProductModal({ product, categories, onClose }: { product: Product | nul
         <Field label={t('category')}>
           <select className="select" value={d.categoryId} onChange={(e) => set('categoryId', Number(e.target.value))}>
             {categories.map((c) => <option key={c.id} value={c.id}>{i18n.language === 'ru' ? c.nameRu : c.nameUz}</option>)}
+          </select>
+        </Field>
+        <Field label={t('supplier')}>
+          <select className="select" value={d.supplierId ?? ''} onChange={(e) => set('supplierId', e.target.value ? Number(e.target.value) : undefined)}>
+            <option value="">—</option>
+            {suppliers.data?.filter((x) => x.active || x.id === d.supplierId).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
           </select>
         </Field>
         <div className="form-grid">

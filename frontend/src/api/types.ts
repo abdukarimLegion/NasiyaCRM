@@ -184,6 +184,7 @@ export interface Product {
   termMax: number;
   stock: number;
   active: boolean;
+  supplierId?: number;
 }
 
 export interface ScoringRequest {
@@ -761,4 +762,36 @@ export interface AnalyticsReport {
   monthly: { month: string; issued: number; collected: number; profit: number; partnerVolume: number; partnerCommission: number }[];
   partners: { code: string; name: string; deals: number; volume: number; commission: number }[];
   pnl: { profit: number; opex: number; operatingProfit: number; eclProvision: number; profitAfterProvision: number; partnerCommission: number; months: number };
+}
+
+export type StockStatus = 'OUT' | 'CRITICAL' | 'LOW' | 'OK' | 'OVER' | 'DEAD';
+
+export interface WarehouseProduct {
+  id: number; name: string; sku?: string; category: string; supplierId?: number; supplierName?: string;
+  stock: number; price: number; stockValue: number; sold30: number; sold90: number; perDay: number;
+  coverDays?: number; leadDays: number; incoming: number; recommendedQty: number; recommendedCost: number;
+  status: StockStatus;
+}
+
+export interface WarehouseAnalytics {
+  coverDays: number;
+  summary: {
+    products: number; units: number; stockValue: number; out: number; critical: number; low: number; dead: number;
+    deadValue: number; turnoverPerYear?: number; toOrderUnits: number; toOrderCost: number;
+  };
+  products: WarehouseProduct[];
+  suggestions: { supplierId?: number; supplierName?: string; leadDays: number; lines: number; units: number; cost: number }[];
+}
+
+export interface Supplier {
+  id: number; name: string; phone?: string; contactPerson?: string; leadTimeDays: number; note?: string; active: boolean;
+}
+
+export type OrderStatus = 'DRAFT' | 'APPROVED' | 'RECEIVED' | 'CANCELLED';
+
+export interface PurchaseOrder {
+  id: number; orderNo: string; supplierId: number; supplierName: string; status: OrderStatus; eta?: string;
+  notes?: string; createdBy?: string; approvedBy?: string; createdAt: string; approvedAt?: string; receivedAt?: string;
+  units: number; total: number;
+  items: { productId: number; productName: string; sku?: string; quantity: number; unitCost: number; lineTotal: number }[];
 }

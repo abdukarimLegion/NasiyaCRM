@@ -47,4 +47,8 @@ public class Product extends AuditedEntity {
 
     @Column(nullable = false)
     private boolean active = true;
+
+    /** Asosiy yetkazib beruvchi (ombor tahlili va buyurtma tavsiyalari uchun) */
+    @Column(name = "supplier_id")
+    private Long supplierId;
 }
