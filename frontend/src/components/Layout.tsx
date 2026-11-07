@@ -19,6 +19,7 @@ export const NAV: { group: string; items: NavItem[] }[] = [
   ] },
   { group: 'nav_front', items: [
     { to: '/new-credit', key: 'newCredit', icon: 'newcredit', perms: ['CONTRACTS_CREATE'] },
+    { to: '/applications', key: 'applications', icon: 'doc', perms: ['CONTRACTS_VIEW'] },
     { to: '/clients', key: 'clients', icon: 'clients', perms: ['CLIENTS_VIEW'] },
     { to: '/payments', key: 'cashierNav', icon: 'payments', perms: ['PAYMENTS_VIEW'] },
     { to: '/products', key: 'products', icon: 'briefcase', perms: ['PRODUCTS_VIEW'] },

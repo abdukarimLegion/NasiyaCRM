@@ -216,3 +216,14 @@
   color: var(--text-muted); font-size: 11px; cursor: pointer;
 }
 .ph-chip:hover { border-style: solid; border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+
+/* ---- Savat (ko'p mahsulotli nasiya) ---- */
+.cart-list { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.cart-line { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.cart-line:last-child { border-bottom: 0; }
+.cart-qty { width: 72px; text-align: center; flex: none; }
+.cart-sum { min-width: 118px; text-align: right; font-size: 12.5px; }
+.cart-total { background: var(--bg-2); }
+@media (max-width: 640px) { .cart-line { flex-wrap: wrap; } .cart-sum { min-width: 0; margin-left: auto; } }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { filter: brightness(1.1); }

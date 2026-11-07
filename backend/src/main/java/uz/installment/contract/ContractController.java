@@ -13,6 +13,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import uz.installment.application.Application;
+import uz.installment.application.ApplicationService;
+import uz.installment.common.BusinessException;
 import uz.installment.common.PageResponse;
 import uz.installment.contract.ContractDtos.ContractDetails;
 import uz.installment.contract.ContractDtos.ContractListItem;
@@ -28,6 +31,7 @@ import uz.installment.security.AuthUser;
 public class ContractController {
 
     private final ContractService service;
+    private final ApplicationService applications;
 
     @GetMapping
     public PageResponse<ContractListItem> list(@RequestParam(required = false) ContractStatus status,
@@ -57,7 +61,14 @@ public class ContractController {
     @PreAuthorize("hasAuthority('CONTRACTS_CREATE')")
     public ContractDetails create(@Valid @RequestBody CreateContractRequest req,
                                   @AuthenticationPrincipal AuthUser me) {
-        return service.create(req, me);
+        // Eski bir qadamli yo'l: ariza yozib qo'yiladi (rad etilsa ham), keyin shartnoma tuziladi
+        Application a = applications.submit(req, me, true);
+        return switch (a.getStatus()) {
+            case CONTRACTED -> service.details(a.getContract().getId(), me);
+            case REJECTED -> throw new BusinessException("SCORING_REJECTED", "Nasiya rad etildi: " + a.getRejectionReason());
+            default -> throw new BusinessException("REVIEW_REQUIRED",
+                    "Risk toifasi C — ariza tasdiqlash uchun yuborildi (" + a.getApplicationNo() + ")");
+        };
     }
 
     @PostMapping("/{id}/cancel")

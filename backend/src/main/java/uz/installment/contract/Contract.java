@@ -128,6 +128,19 @@ public class Contract extends AuditedEntity {
     @OrderBy("seq ASC")
     private List<ScheduleItem> schedule = new ArrayList<>();
 
+    @OneToMany(mappedBy = "contract", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC")
+    private List<ContractItem> items = new ArrayList<>();
+
+    /** Qaysi arizadan tuzilgan (to'g'ridan-to'g'ri tuzilgan eski shartnomalarda ham ariza bor, V5 dan keyin). */
+    @Column(name = "application_id")
+    private Long applicationId;
+
+    public void addItem(ContractItem item) {
+        item.setContract(this);
+        items.add(item);
+    }
+
     public void addScheduleItem(ScheduleItem item) {
         item.setContract(this);
         schedule.add(item);

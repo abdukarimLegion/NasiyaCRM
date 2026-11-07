@@ -23,9 +23,19 @@ public final class ContractDtos {
     }
 
     /** Hisob-kitobni oldindan ko'rish (wizard'ning "Murobaha" qadami). */
+    /** Savatdagi bitta mahsulot. unitPrice null bo'lsa — mahsulotning joriy narxi. */
+    public record CartItem(@NotNull Long productId, @Min(1) @Max(1000) int quantity,
+                           @Positive BigDecimal unitPrice) {
+    }
+
+    /**
+     * Savat: {@code items} berilsa — shu mahsulotlar; aks holda eski bitta mahsulotli shakl
+     * ({@code productId} + ixtiyoriy {@code price}).
+     */
     public record QuoteRequest(
-            @NotNull Long productId,
-            @Positive BigDecimal price,                 // null bo'lsa mahsulot narxi
+            Long productId,
+            @Positive BigDecimal price,                 // faqat productId bilan: null bo'lsa mahsulot narxi
+            @Valid @Size(max = 30) List<CartItem> items,
             @PositiveOrZero BigDecimal downPayment,
             @DecimalMin("0") @DecimalMax("100") BigDecimal markupPct, // null bo'lsa mahsulot ustamasi
             @Min(1) @Max(60) int termMonths,
@@ -39,6 +49,14 @@ public final class ContractDtos {
             @Size(max = 150) String guarantorName,
             @Size(max = 20) String guarantorPhone,
             Long branchId) {
+    }
+
+    public record ItemDto(Long productId, String productName, BigDecimal unitPrice, int quantity,
+                          BigDecimal lineTotal) {
+        static ItemDto of(ContractItem i) {
+            return new ItemDto(i.getProduct() != null ? i.getProduct().getId() : null, i.getProductName(),
+                    i.getUnitPrice(), i.getQuantity(), i.getLineTotal());
+        }
     }
 
     public record ScheduleItemDto(Long id, int seq, LocalDate dueDate, BigDecimal amount, BigDecimal principalPart,
@@ -69,6 +87,15 @@ public final class ContractDtos {
         }
     }
 
+    /** V5 dan oldingi (yoki to'g'ridan-to'g'ri SQL bilan kiritilgan) shartnomalarda qator bo'lmasa — bitta sintetik qator. */
+    static List<ItemDto> itemsOf(Contract c) {
+        if (!c.getItems().isEmpty()) {
+            return c.getItems().stream().map(ItemDto::of).toList();
+        }
+        return List.of(new ItemDto(c.getProduct() != null ? c.getProduct().getId() : null, c.getProductName(),
+                c.getCostPrice(), 1, c.getCostPrice()));
+    }
+
     public record ContractDetails(Long id, String contractNo, Long clientId, String clientName, String clientPhone,
                                   String productName, BigDecimal costPrice, BigDecimal downPayment,
                                   BigDecimal markupPct, BigDecimal markupAmount, BigDecimal salePrice,
@@ -78,7 +105,8 @@ public final class ContractDtos {
                                   String guarantorName, String guarantorPhone, BigDecimal paidTotal,
                                   BigDecimal remaining, Instant createdAt, Instant closedAt,
                                   List<ScheduleItemDto> schedule, Long branchId, String branchName,
-                                  String officerName, Long collectorId, String collectorName) {
+                                  String officerName, Long collectorId, String collectorName,
+                                  List<ItemDto> items, Long applicationId) {
         static ContractDetails of(Contract c) {
             BigDecimal paid = c.getSchedule().stream().map(ScheduleItem::getPaidAmount)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -93,7 +121,8 @@ public final class ContractDtos {
                     c.getBranch() != null ? c.getBranch().getName() : null,
                     c.getOfficer() != null ? c.getOfficer().getFullName() : null,
                     c.getCollector() != null ? c.getCollector().getId() : null,
-                    c.getCollector() != null ? c.getCollector().getFullName() : null);
+                    c.getCollector() != null ? c.getCollector().getFullName() : null,
+                    itemsOf(c), c.getApplicationId());
         }
     }
 }

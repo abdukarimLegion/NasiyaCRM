@@ -85,7 +85,11 @@ export default function ContractDetailPage() {
               <Bar pct={pct} />
             </div>
             <dl className="kv">
-              <dt>{t('product')}</dt><dd>{c.productName}</dd>
+              <dt>{t('product')}</dt>
+              <dd>{c.items.length > 1
+                ? <div className="col" style={{ gap: 2 }}>{c.items.map((i, k) => (
+                  <span key={k}>{i.productName}{i.quantity > 1 ? ` ×${i.quantity}` : ''} <span className="faint mono">· {fmtSom(i.lineTotal, lang)}</span></span>))}</div>
+                : c.productName}</dd>
               <dt>{t('productPrice')}</dt><dd>{fmtSom(c.costPrice, lang)}</dd>
               <dt>{t('downPayment')}</dt><dd>{fmtSom(c.downPayment, lang)}</dd>
               <dt>{t('profit')} ({c.markupPct}%)</dt><dd>{fmtSom(c.markupAmount, lang)}</dd>
@@ -96,6 +100,7 @@ export default function ContractDetailPage() {
               {c.guarantorName && <><dt>{t('guarantorName')}</dt><dd>{c.guarantorName}</dd></>}
               {c.branchName && <><dt>{t('branch')}</dt><dd>{c.branchName}</dd></>}
               {c.officerName && <><dt>{t('officer')}</dt><dd>{c.officerName}</dd></>}
+              {c.applicationId && <><dt>{t('application')}</dt><dd><Link to={`/applications?focus=${c.applicationId}`}>#{c.applicationId}</Link></dd></>}
               {c.collectorName && <><dt>{t('collector')}</dt><dd>{c.collectorName}</dd></>}
               <dt>{t('date')}</dt><dd>{fmtDate(c.createdAt, lang)}</dd>
             </dl>

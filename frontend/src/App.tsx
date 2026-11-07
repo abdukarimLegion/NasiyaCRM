@@ -10,6 +10,7 @@ import DashboardPage from './pages/DashboardPage';
 import ClientsPage from './pages/ClientsPage';
 import ClientDetailPage from './pages/ClientDetailPage';
 import NewCreditPage from './pages/NewCreditPage';
+import ApplicationsPage from './pages/ApplicationsPage';
 import ContractsPage from './pages/ContractsPage';
 import ContractDetailPage from './pages/ContractDetailPage';
 import PaymentsPage from './pages/PaymentsPage';
@@ -64,6 +65,7 @@ export default function App() {
         <Route path="clients" element={<Guard perms={['CLIENTS_VIEW']}><ClientsPage /></Guard>} />
         <Route path="clients/:id" element={<Guard perms={['CLIENTS_VIEW']}><ClientDetailPage /></Guard>} />
         <Route path="new-credit" element={<Guard perms={['CONTRACTS_CREATE']}><NewCreditPage /></Guard>} />
+        <Route path="applications" element={<Guard perms={['CONTRACTS_VIEW']}><ApplicationsPage /></Guard>} />
         <Route path="contracts" element={<Guard perms={['CONTRACTS_VIEW']}><ContractsPage /></Guard>} />
         <Route path="contracts/:id" element={<Guard perms={['CONTRACTS_VIEW']}><ContractDetailPage /></Guard>} />
         <Route path="payments" element={<Guard perms={['PAYMENTS_VIEW']}><PaymentsPage /></Guard>} />

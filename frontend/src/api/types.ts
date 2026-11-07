@@ -201,8 +201,16 @@ export interface ScoringResult {
   decision: Decision;
 }
 
-export interface QuoteRequest {
+export interface CartItem {
   productId: number;
+  quantity: number;
+  unitPrice?: number;
+}
+
+export interface QuoteRequest {
+  /** Savat (bir nechta mahsulot). Berilsa productId/price e'tiborga olinmaydi. */
+  items?: CartItem[];
+  productId?: number;
   price?: number;
   downPayment?: number;
   markupPct?: number;
@@ -292,6 +300,49 @@ export interface ContractDetails {
   officerName?: string;
   collectorId?: number;
   collectorName?: string;
+  items: ContractItem[];
+  applicationId?: number;
+}
+
+export interface ContractItem {
+  productId?: number;
+  productName: string;
+  unitPrice: number;
+  quantity: number;
+  lineTotal: number;
+}
+
+export type ApplicationStatus = 'PENDING' | 'APPROVED' | 'CONTRACTED' | 'REJECTED';
+
+export interface ApplicationView {
+  id: number;
+  applicationNo: string;
+  clientId: number;
+  clientName: string;
+  clientPhone: string;
+  itemsSummary: string;
+  costPrice: number;
+  downPayment: number;
+  markupPct: number;
+  salePrice: number;
+  installmentTotal: number;
+  termMonths: number;
+  monthlyPayment: number;
+  scoreTotal?: number;
+  riskCategory?: RiskCategory;
+  decision?: Decision;
+  status: ApplicationStatus;
+  rejectionReason?: string;
+  officerId?: number;
+  officerName?: string;
+  branchId?: number;
+  branchName?: string;
+  decidedByName?: string;
+  decidedAt?: string;
+  contractId?: number;
+  contractNo?: string;
+  createdAt: string;
+  scoreDetails?: { stopFactors?: StopFactor[]; points?: Record<Factor, number> };
 }
 
 export interface PaymentDto {
