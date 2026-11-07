@@ -17,10 +17,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import uz.installment.audit.AuditService;
 import uz.installment.common.BusinessException;
 import uz.installment.common.NotFoundException;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -30,6 +32,7 @@ public class UserController {
 
     private final UserRepository users;
     private final PasswordEncoder passwordEncoder;
+    private final AuditService audit;
 
     public record CreateUser(@NotBlank @Size(max = 50) String username,
                              @NotBlank @Size(min = 8, max = 100) String password,
@@ -58,7 +61,11 @@ public class UserController {
         u.setPasswordHash(passwordEncoder.encode(req.password()));
         u.setFullName(req.fullName().trim());
         u.setRole(req.role());
-        return AuthController.UserView.of(users.save(u));
+        User saved = users.save(u);
+        audit.record("USER_CREATE", "USER", saved.getId(), Map.of(
+                "username", saved.getUsername(),
+                "role", saved.getRole().name()));
+        return AuthController.UserView.of(saved);
     }
 
     @PutMapping("/{id}")
@@ -71,6 +78,12 @@ public class UserController {
         if (req.newPassword() != null && !req.newPassword().isBlank()) {
             u.setPasswordHash(passwordEncoder.encode(req.newPassword()));
         }
+        audit.record("USER_UPDATE", "USER", u.getId(), Map.of(
+                "username", u.getUsername(),
+                "fullName", u.getFullName(),
+                "role", u.getRole().name(),
+                "active", u.isActive(),
+                "passwordChanged", req.newPassword() != null && !req.newPassword().isBlank()));
         return AuthController.UserView.of(u);
     }
 }

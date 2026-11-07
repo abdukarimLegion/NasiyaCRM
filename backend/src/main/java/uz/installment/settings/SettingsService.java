@@ -3,14 +3,19 @@ package uz.installment.settings;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import uz.installment.audit.AuditService;
 import uz.installment.common.NotFoundException;
 import uz.installment.common.TenantContext;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class SettingsService {
 
     private final TenantSettingsRepository repo;
+    private final AuditService audit;
 
     @Transactional(readOnly = true)
     public TenantSettings current() {
@@ -31,6 +36,16 @@ public class SettingsService {
         s.setRoundingStep(dto.roundingStep());
         s.setMaxActiveContracts(dto.maxActiveContracts());
         s.setSmsSender(dto.smsSender());
+
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("companyName", s.getCompanyName());
+        details.put("brandName", s.getBrandName());
+        details.put("primaryColor", s.getPrimaryColor());
+        details.put("contractPrefix", s.getContractPrefix());
+        details.put("defaultLang", s.getDefaultLang());
+        details.put("roundingStep", s.getRoundingStep());
+        details.put("maxActiveContracts", s.getMaxActiveContracts());
+        audit.record("SETTINGS_UPDATE", "TENANT_SETTINGS", s.getTenantId(), details);
         return s;
     }
 }

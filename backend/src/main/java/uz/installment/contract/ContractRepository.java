@@ -25,6 +25,15 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
 
     boolean existsByClientIdAndStatus(Long clientId, ContractStatus status);
 
+    /** Mijozning ochiq shartnomalari bo'yicha jami oylik to'lov (kredit limitini hisoblash uchun). */
+    @Query("""
+            select coalesce(sum(c.monthlyPayment), 0) from Contract c
+            where c.client.id = :clientId
+              and c.status in (uz.installment.contract.ContractStatus.ACTIVE,
+                               uz.installment.contract.ContractStatus.LATE)
+            """)
+    java.math.BigDecimal sumOpenMonthlyPayment(@Param("clientId") Long clientId);
+
     /** openOnly — faqat to'lov qabul qilinadigan (ACTIVE / LATE) shartnomalar (kassa uchun). */
     @EntityGraph(attributePaths = "client")
     @Query("""

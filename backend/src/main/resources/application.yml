@@ -19,8 +19,6 @@ spring:
         jdbc.time_zone: UTC
   flyway:
     locations: classpath:db/migration
-    # dev'da yuklangan demo migratsiya (V100) prod'da topilmasa xato bermasin
-    ignore-migration-patterns: "*:missing"
   jackson:
     default-property-inclusion: non_null
     serialization:
@@ -54,7 +52,11 @@ app:
     daily-cron: ${APP_DAILY_CRON:0 0 9 * * *}
 
 springdoc:
+  # Hujjatlar prod'da o'chirilgan — faqat dev profilida yoqiladi.
+  api-docs:
+    enabled: false
   swagger-ui:
+    enabled: false
     path: /api/docs
 
 management:
@@ -70,8 +72,17 @@ spring:
       on-profile: dev
   flyway:
     locations: classpath:db/migration,classpath:db/demo
+    # dev'da yuklangan demo migratsiya (V100) prod'da topilmasa xato bermasin
+    ignore-migration-patterns: "*:missing"
   jpa:
     show-sql: false
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
 app:
   bootstrap-admin:
     password: ${APP_ADMIN_PASSWORD:admin123}

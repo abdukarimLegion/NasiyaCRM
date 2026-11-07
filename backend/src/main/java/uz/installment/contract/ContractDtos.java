@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import uz.installment.payment.PaymentMethod;
 import uz.installment.scoring.ScoringEngine;
 import uz.installment.scoring.ScoringService;
 
@@ -37,7 +38,10 @@ public final class ContractDtos {
             @NotNull @Valid QuoteRequest terms,
             @NotNull @Valid ScoringService.ScoringRequest scoring,
             @Size(max = 150) String guarantorName,
-            @Size(max = 20) String guarantorPhone) {
+            @Size(max = 20) String guarantorPhone,
+            PaymentMethod downPaymentMethod,          // null bo'lsa CASH
+            Boolean limitOverride,                    // faqat ADMIN uchun
+            @Size(max = 500) String overrideReason) {
     }
 
     public record ScheduleItemDto(Long id, int seq, LocalDate dueDate, BigDecimal amount, BigDecimal principalPart,
