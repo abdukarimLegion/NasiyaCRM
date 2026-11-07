@@ -226,6 +226,22 @@ Provayder `APP_MIB_PROVIDER` bilan tanlanadi:
 > uchun `http` adapter umumiy yozilgan va sozlamalar bilan moslanadi. MIB bilan rasmiy ulanish va mijozdan
 > shaxsiy ma'lumotlarni tekshirishga rozilik olish (ma'lumotlarni himoya qilish qoidalari) alohida hal qilinadi.
 
+**`http` adapterni soxta server bilan sinash** (haqiqiy MIB'siz): `python3 deploy/mib-mock/mock_mib.py 9090 secret123`,
+so'ng backend'ni quyidagi sozlamalar bilan ishga tushiring:
+
+```bash
+APP_MIB_PROVIDER=http
+APP_MIB_URL='http://127.0.0.1:9090/api/debts/{pinfl}'
+APP_MIB_TOKEN=secret123
+APP_MIB_DEBT_FLAG_PATH=data.hasDebt
+APP_MIB_AMOUNT_PATH=data.totalDebt
+APP_MIB_CASES_PATH=data.cases
+APP_MIB_MESSAGE_PATH=message
+```
+
+Soxta serverda JShShIR oxirgi raqami `9` — qarz bor, `4` — 404 (ijro ishi yo'q), `5` — 500 (xato), `7` — sekin javob
+(timeout), qolganlari — qarz yo'q.
+
 ### Hamkor provayderlar
 
 Alif / Uzum / TBC shartlari (komissiya, maksimal muddat, minimal boshlang'ich to'lov, DTI) **Sozlamalar →
