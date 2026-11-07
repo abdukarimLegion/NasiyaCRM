@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { api } from '../api/client';
+import { api, openPdf } from '../api/client';
 import type { ContractDetails, PaymentDto, PaymentMethod } from '../api/types';
 import {
   Bar, Btn, Card, CardHead, ContractStatusBadge, ErrorBox, Field, Icon, Loading, Modal, RiskPill, ScheduleStatusBadge,
@@ -17,7 +17,8 @@ export default function ContractDetailPage() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const qc = useQueryClient();
-  const { hasRole } = useAuth();
+  const { can } = useAuth();
+  const [pdfErr, setPdfErr] = useState<unknown>(null);
   const [paying, setPaying] = useState(false);
   const { data: c, error, isLoading } = useQuery({
     queryKey: ['contract', Number(id)],
@@ -39,7 +40,7 @@ export default function ContractDetailPage() {
       <div className="detail-grid">
         <Card>
           <CardHead title={t('schedule')} sub={`${fmtSom(c.monthlyPayment, lang)} × ${c.termMonths}`}
-            right={open && hasRole('ADMIN', 'CASHIER', 'CREDIT_OFFICER') && (
+            right={open && can('PAYMENTS_ACCEPT') && (
               <Btn size="sm" icon="card" onClick={() => setPaying(true)}>{t('payNow')}</Btn>
             )} />
           <div className="table-wrap">
@@ -71,13 +72,24 @@ export default function ContractDetailPage() {
               <b className="display mono" style={{ fontSize: 18 }}>{c.contractNo}</b>
               <ContractStatusBadge status={c.status} />
             </div>
+            <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+              <Btn size="sm" variant="soft" icon="printer" onClick={() => {
+                setPdfErr(null);
+                openPdf('GET', `/api/documents/contracts/${c.id}/contract?lang=${lang === 'ru' ? 'ru' : 'uz'}`).catch(setPdfErr);
+              }}>{t('contractPdf')}</Btn>
+            </div>
+            <ErrorBox error={pdfErr} />
             <Link to={`/clients/${c.clientId}`} style={{ fontWeight: 600 }}>{c.clientName}</Link>
             <div className="col" style={{ gap: 6 }}>
               <div className="row between"><span className="faint">{t('paid')}</span><b>{Math.round(pct)}%</b></div>
               <Bar pct={pct} />
             </div>
             <dl className="kv">
-              <dt>{t('product')}</dt><dd>{c.productName}</dd>
+              <dt>{t('product')}</dt>
+              <dd>{c.items.length > 1
+                ? <div className="col" style={{ gap: 2 }}>{c.items.map((i, k) => (
+                  <span key={k}>{i.productName}{i.quantity > 1 ? ` ×${i.quantity}` : ''} <span className="faint mono">· {fmtSom(i.lineTotal, lang)}</span></span>))}</div>
+                : c.productName}</dd>
               <dt>{t('productPrice')}</dt><dd>{fmtSom(c.costPrice, lang)}</dd>
               <dt>{t('downPayment')}</dt><dd>{fmtSom(c.downPayment, lang)}</dd>
               <dt>{t('profit')} ({c.markupPct}%)</dt><dd>{fmtSom(c.markupAmount, lang)}</dd>
@@ -86,10 +98,14 @@ export default function ContractDetailPage() {
               <dt>{t('remaining')}</dt><dd>{fmtSom(c.remaining, lang)}</dd>
               <dt>{t('risk')}</dt><dd><RiskPill cat={c.riskCategory} /> {c.scoreTotal}</dd>
               {c.guarantorName && <><dt>{t('guarantorName')}</dt><dd>{c.guarantorName}</dd></>}
+              {c.branchName && <><dt>{t('branch')}</dt><dd>{c.branchName}</dd></>}
+              {c.officerName && <><dt>{t('officer')}</dt><dd>{c.officerName}</dd></>}
+              {c.applicationId && <><dt>{t('application')}</dt><dd><Link to={`/applications?focus=${c.applicationId}`}>#{c.applicationId}</Link></dd></>}
+              {c.collectorName && <><dt>{t('collector')}</dt><dd>{c.collectorName}</dd></>}
               <dt>{t('date')}</dt><dd>{fmtDate(c.createdAt, lang)}</dd>
             </dl>
             <ErrorBox error={cancel.error} />
-            {hasRole('ADMIN') && open && c.paidTotal === 0 && (
+            {can('CONTRACTS_CANCEL') && open && c.paidTotal === 0 && (
               <Btn variant="ghost" size="sm" icon="x" onClick={() => cancel.mutate()}>{t('cancelContract')}</Btn>
             )}
           </div>

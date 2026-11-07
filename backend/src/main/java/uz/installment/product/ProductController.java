@@ -51,16 +51,17 @@ public class ProductController {
             @Min(1) @Max(60) int termMin,
             @Min(1) @Max(60) int termMax,
             @PositiveOrZero int stock,
-            boolean active) {
+            boolean active,
+            Long supplierId) {
     }
 
     public record ProductResponse(Long id, Long categoryId, String categoryCode, String name, String sku,
                                   BigDecimal price, BigDecimal markupPct, int termMin, int termMax, int stock,
-                                  boolean active) {
+                                  boolean active, Long supplierId) {
         static ProductResponse of(Product p) {
             return new ProductResponse(p.getId(), p.getCategory().getId(), p.getCategory().getCode(), p.getName(),
                     p.getSku(), p.getPrice(), p.getMarkupPct(), p.getTermMin(), p.getTermMax(), p.getStock(),
-                    p.isActive());
+                    p.isActive(), p.getSupplierId());
         }
     }
 
@@ -70,6 +71,7 @@ public class ProductController {
     }
 
     @GetMapping("/products")
+    @PreAuthorize("hasAnyAuthority('PRODUCTS_VIEW','CONTRACTS_CREATE')")
     @Transactional(readOnly = true)
     public List<ProductResponse> list(@RequestParam(required = false) Long categoryId,
                                       @RequestParam(defaultValue = "false") boolean activeOnly) {
@@ -78,7 +80,7 @@ public class ProductController {
 
     @PostMapping("/products")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PRODUCTS_EDIT')")
     @Transactional
     public ProductResponse create(@Valid @RequestBody ProductRequest req) {
         Product p = new Product();
@@ -87,7 +89,7 @@ public class ProductController {
     }
 
     @PutMapping("/products/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PRODUCTS_EDIT')")
     @Transactional
     public ProductResponse update(@PathVariable Long id, @Valid @RequestBody ProductRequest req) {
         Product p = products.findById(id).orElseThrow(() -> new NotFoundException("Mahsulot", id));
@@ -109,5 +111,6 @@ public class ProductController {
         p.setTermMax(r.termMax());
         p.setStock(r.stock());
         p.setActive(r.active());
+        p.setSupplierId(r.supplierId());
     }
 }

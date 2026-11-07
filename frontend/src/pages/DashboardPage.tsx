@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../api/client';
+import { api, qs } from '../api/client';
 import type { ContractListItem, Dashboard, Page } from '../api/types';
 import {
   BarsChart, Btn, Card, CardHead, ContractStatusBadge, Donut, Empty, ErrorBox, Icon, Loading, Stat,
 } from '../components/ui';
 import { fmtMln } from '../lib/format';
+import { useBranch } from '../lib/branch';
 
 type Kpis = Dashboard['kpis'];
 
@@ -32,14 +33,15 @@ export default function DashboardPage() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const nav = useNavigate();
+  const branch = useBranch();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['dashboard'],
-    queryFn: () => api.get<Dashboard>('/api/dashboard'),
+    queryKey: ['dashboard', branch.param],
+    queryFn: () => api.get<Dashboard>(`/api/dashboard${qs({ branchId: branch.param })}`),
   });
   const { data: recent } = useQuery({
-    queryKey: ['dashboard-contracts'],
-    queryFn: () => api.get<Page<ContractListItem>>('/api/contracts?page=0&size=5'),
+    queryKey: ['dashboard-contracts', branch.param],
+    queryFn: () => api.get<Page<ContractListItem>>(`/api/contracts${qs({ page: 0, size: 5, branchId: branch.param })}`),
   });
 
   if (isLoading) return <Loading />;

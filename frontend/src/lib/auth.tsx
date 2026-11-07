@@ -1,13 +1,18 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, getToken, setToken, setUnauthorizedHandler } from '../api/client';
-import type { LoginResponse, Role, UserView } from '../api/types';
+import type { LoginResponse, Permission, Role, UserView } from '../api/types';
 
 interface AuthState {
   user: UserView | null;
   ready: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  /** onVerified: parol to'g'ri chiqqach, panelga o'tishdan oldin bajariladi (masalan, animatsiya) */
+  login: (username: string, password: string, onVerified?: () => Promise<void>) => Promise<void>;
   logout: () => void;
   hasRole: (...roles: Role[]) => boolean;
+  /** Ruxsatlardan kamida bittasi bo'lsa true */
+  can: (...perms: Permission[]) => boolean;
+  /** Ruxsat va filial o'zgargan bo'lsa qayta yuklash */
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -33,16 +38,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setReady(true));
   }, []);
 
-  const login = useCallback(async (username: string, password: string) => {
+  const login = useCallback(async (username: string, password: string, onVerified?: () => Promise<void>) => {
     const res = await api.post<LoginResponse>('/api/auth/login', { username, password });
+    if (onVerified) await onVerified();
     setToken(res.token);
     setUser(res.user);
   }, []);
 
+  const refresh = useCallback(async () => {
+    if (!getToken()) return;
+    setUser(await api.get<UserView>('/api/auth/me'));
+  }, []);
+
   const value = useMemo<AuthState>(() => ({
-    user, ready, login, logout,
+    user, ready, login, logout, refresh,
     hasRole: (...roles) => !!user && roles.includes(user.role),
-  }), [user, ready, login, logout]);
+    can: (...perms) => !!user && perms.some((p) => user.permissions?.includes(p)),
+  }), [user, ready, login, logout, refresh]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

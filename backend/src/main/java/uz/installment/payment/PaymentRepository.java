@@ -18,6 +18,10 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     List<Payment> findByContractIdOrderByPaidAtDesc(Long contractId);
 
     @EntityGraph(attributePaths = {"contract", "contract.client", "cashier"})
-    @Query("select p from Payment p where p.paidAt >= :from and p.paidAt < :to")
-    Page<Payment> findInPeriod(@Param("from") Instant from, @Param("to") Instant to, Pageable pageable);
+    @Query("""
+            select p from Payment p where p.paidAt >= :from and p.paidAt < :to
+              and (:branchId is null or p.contract.branch.id = :branchId)
+            """)
+    Page<Payment> findInPeriod(@Param("from") Instant from, @Param("to") Instant to,
+                               @Param("branchId") Long branchId, Pageable pageable);
 }

@@ -31,6 +31,7 @@ public class ScoringService {
             EnumSet.of(StopFactor.BLACKLIST, StopFactor.FRAUD, StopFactor.COURT);
 
     private final ContractRepository contracts;
+    private final org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate jdbc;
     private final SettingsService settings;
     private final Clock clock;
 
@@ -60,6 +61,14 @@ public class ScoringService {
         }
         if (contracts.existsByClientIdAndStatus(client.getId(), ContractStatus.LATE)) {
             stops.add(StopFactor.OVERDUE);
+        }
+        // Xodim o'ziga nasiya olishi cheklangan (komplayens): JShShIR faol xodim JShShIR'iga mos kelsa
+        Integer restricted = jdbc.queryForObject("""
+                select count(*) from users where tenant_id = :t and active and not allow_nasiya and pinfl = :p
+                """, java.util.Map.of("t", uz.installment.common.TenantContext.currentTenantId(),
+                "p", client.getPinfl() == null ? "" : client.getPinfl()), Integer.class);
+        if (restricted != null && restricted > 0) {
+            stops.add(StopFactor.EMPLOYEE_RESTRICTED);
         }
         long open = contracts.countByClientIdAndStatusIn(client.getId(),
                 List.of(ContractStatus.ACTIVE, ContractStatus.LATE));

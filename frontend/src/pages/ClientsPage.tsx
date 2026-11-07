@@ -13,8 +13,9 @@ export default function ClientsPage() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const nav = useNavigate();
-  const { hasRole } = useAuth();
-  const canCredit = hasRole('ADMIN', 'CREDIT_OFFICER');
+  const { can } = useAuth();
+  const canCredit = can('CONTRACTS_CREATE');
+  const canEdit = can('CLIENTS_EDIT');
   const [q, setQ] = useState('');
   const [debounced, setDebounced] = useState('');
   const [page, setPage] = useState(0);
@@ -41,7 +42,7 @@ export default function ClientsPage() {
           <h1 className="page-h1"><span className="h1-ic"><Icon name="clients" size={18} /></span>{t('clientsBase')}</h1>
           <span className="faint" style={{ fontSize: 12.5 }}>{t('clientsBaseSub')}</span>
         </div>
-        {canCredit && <Btn icon="plus" size="sm" onClick={() => setAdding(true)}>{t('newClient')}</Btn>}
+        {canEdit && <Btn icon="plus" size="sm" onClick={() => setAdding(true)}>{t('newClient')}</Btn>}
       </div>
 
       {sum && (

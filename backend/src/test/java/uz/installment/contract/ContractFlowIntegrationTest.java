@@ -89,7 +89,7 @@ class ContractFlowIntegrationTest {
         admin.setFullName("Integration Admin");
         admin.setRole(Role.ADMIN);
         users.saveAndFlush(admin);
-        officer = new AuthUser(admin.getId(), admin.getUsername(), Role.ADMIN);
+        officer = new AuthUser(admin.getId(), admin.getUsername(), Role.ADMIN, null, Role.ADMIN.defaultPermissions());
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 officer, null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
 
@@ -114,10 +114,10 @@ class ContractFlowIntegrationTest {
 
     @Test
     void recordsDownPaymentAsPayment() {
-        var details = contracts.create(request(client, terms(new BigDecimal("2000000")), false, null), officer);
+        var created = create(client, terms(new BigDecimal("2000000")), false, null);
 
-        assertEquals(0, details.downPayment().compareTo(new BigDecimal("2000000")));
-        List<Payment> saved = payments.findByContractIdOrderByPaidAtDesc(details.id());
+        assertEquals(0, created.getDownPayment().compareTo(new BigDecimal("2000000")));
+        List<Payment> saved = payments.findByContractIdOrderByPaidAtDesc(created.getId());
         assertEquals(1, saved.size());
         assertEquals(0, saved.get(0).getAmount().compareTo(new BigDecimal("2000000")));
         assertEquals(PaymentMethod.CASH, saved.get(0).getMethod());
@@ -129,7 +129,7 @@ class ContractFlowIntegrationTest {
         Client lowIncome = clientWithIncome("1000000", "12345678901235");
 
         BusinessException e = assertThrows(BusinessException.class,
-                () -> contracts.create(request(lowIncome, terms(BigDecimal.ZERO), false, null), officer));
+                () -> create(lowIncome, terms(BigDecimal.ZERO), false, null));
         assertEquals("OVER_CAPACITY", e.getCode());
     }
 
@@ -137,27 +137,27 @@ class ContractFlowIntegrationTest {
     void adminCanOverrideLimitAndAuditIsWritten() {
         Client lowIncome = clientWithIncome("1000000", "12345678901236");
 
-        var details = contracts.create(request(lowIncome, terms(BigDecimal.ZERO), true, "Ishonchli mijoz"), officer);
-        assertNotNull(details.id());
+        var created = create(lowIncome, terms(BigDecimal.ZERO), true, "Ishonchli mijoz");
+        assertNotNull(created.getId());
 
         var logs = auditLogs.findAllByOrderByIdDesc(PageRequest.of(0, 20)).getContent();
         assertTrue(logs.stream().anyMatch(l -> "CONTRACT_CREATE".equals(l.getAction())
-                && details.id().equals(l.getEntityId())));
+                && created.getId().equals(l.getEntityId())));
         assertTrue(logs.stream().anyMatch(l -> "CONTRACT_LIMIT_OVERRIDE".equals(l.getAction())
-                && details.id().equals(l.getEntityId())));
+                && created.getId().equals(l.getEntityId())));
     }
 
     @Test
     void externalIdCannotBeReusedForAnotherContract() {
-        var first = contracts.create(request(client, terms(BigDecimal.ZERO), false, null), officer);
+        var first = create(client, terms(BigDecimal.ZERO), false, null);
         Client secondClient = clientWithIncome("5000000", "12345678901237");
-        var second = contracts.create(request(secondClient, terms(BigDecimal.ZERO), false, null), officer);
+        var second = create(secondClient, terms(BigDecimal.ZERO), false, null);
 
-        paymentService.register(new PaymentService.RegisterPayment(first.id(), new BigDecimal("100000"),
+        paymentService.register(new PaymentService.RegisterPayment(first.getId(), new BigDecimal("100000"),
                 PaymentMethod.CASH, "ext-1", null), officer);
 
         BusinessException e = assertThrows(BusinessException.class, () -> paymentService.register(
-                new PaymentService.RegisterPayment(second.id(), new BigDecimal("100000"), PaymentMethod.CASH,
+                new PaymentService.RegisterPayment(second.getId(), new BigDecimal("100000"), PaymentMethod.CASH,
                         "ext-1", null), officer));
         assertEquals("EXTERNAL_ID_CONFLICT", e.getCode());
     }
@@ -171,17 +171,20 @@ class ContractFlowIntegrationTest {
         return clients.saveAndFlush(c);
     }
 
-    private CreateContractRequest request(Client c, QuoteRequest terms, boolean override, String reason) {
+    private Contract create(Client c, QuoteRequest terms, boolean override, String reason) {
         var scoring = new ScoringService.ScoringRequest(Map.of(
                 Factor.INCOME, 27, Factor.TENURE, 13, Factor.FAMILY, 9,
                 Factor.HISTORY, 18, Factor.DISCIPLINE, 14, Factor.GUARANTOR, 9),
                 true, true, Set.of());
-        return new CreateContractRequest(c.getId(), terms, scoring, null, null,
-                PaymentMethod.CASH, override ? Boolean.TRUE : null, reason);
+        var score = uz.installment.scoring.ScoringEngine.evaluate(
+                new uz.installment.scoring.ScoringEngine.Input(scoring.points(), true, true, Set.of()));
+        var req = new CreateContractRequest(c.getId(), terms, scoring, null, null,
+                PaymentMethod.CASH, override ? Boolean.TRUE : null, reason, null);
+        return contracts.create(req, officer, score, null);
     }
 
     private QuoteRequest terms(BigDecimal downPayment) {
-        return new QuoteRequest(product.getId(), null, downPayment, null, 12,
+        return new QuoteRequest(product.getId(), null, null, downPayment, null, 12,
                 LocalDate.now().plusMonths(1));
     }
 }

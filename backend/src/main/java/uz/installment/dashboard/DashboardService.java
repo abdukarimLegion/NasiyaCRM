@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -52,40 +53,49 @@ public class DashboardService {
                             List<CategorySlice> categoryMix) {
     }
 
-    public Dashboard get() {
+    public Dashboard get(Long branchId) {
         LocalDate today = LocalDate.now(clock);
         LocalDate monthStart = today.withDayOfMonth(1);
         OffsetDateTime monthStartTs = monthStart.atStartOfDay(clock.getZone()).toOffsetDateTime();
-        Map<String, Object> p = Map.of("today", today, "tomorrow", today.plusDays(1),
-                "monthStart", monthStart, "monthStartTs", monthStartTs,
-                "yearAgo", monthStart.minusMonths(11));
+        Map<String, Object> p = new HashMap<>();
+        p.put("today", today);
+        p.put("tomorrow", today.plusDays(1));
+        p.put("monthStart", monthStart);
+        p.put("monthStartTs", monthStartTs);
+        p.put("yearAgo", monthStart.minusMonths(11));
+        p.put("branch", branchId);
 
         Kpis kpis = jdbc.queryForObject("""
                 select
                   coalesce((select sum(s.amount - s.paid_amount) from schedule_items s
                             join contracts c on c.id = s.contract_id
-                            where c.status in ('ACTIVE','LATE')), 0)                                  as total_debt,
+                            where c.status in ('ACTIVE','LATE') and (cast(:branch as bigint) is null or c.branch_id = :branch)), 0)                                  as total_debt,
                   coalesce((select sum(s.amount - s.paid_amount) from schedule_items s
                             join contracts c on c.id = s.contract_id
-                            where c.status in ('ACTIVE','LATE') and s.status <> 'PAID'
+                            where c.status in ('ACTIVE','LATE') and s.status <> 'PAID' and (cast(:branch as bigint) is null or c.branch_id = :branch)
                               and s.due_date < :today::date), 0)                                            as overdue,
-                  coalesce((select sum(amount) from payments where paid_at >= :monthStartTs::timestamptz), 0)      as collected,
-                  coalesce((select sum(cost_price - down_payment) from contracts
-                            where status <> 'CANCELLED' and created_at >= :monthStartTs::timestamptz), 0)          as issued,
+                  coalesce((select sum(p.amount) from payments p join contracts c on c.id = p.contract_id
+                            where p.paid_at >= :monthStartTs::timestamptz and (cast(:branch as bigint) is null or c.branch_id = :branch)), 0)      as collected,
+                  coalesce((select sum(c.cost_price - c.down_payment) from contracts c
+                            where c.status <> 'CANCELLED' and c.created_at >= :monthStartTs::timestamptz
+                              and (cast(:branch as bigint) is null or c.branch_id = :branch)), 0)          as issued,
                   (select count(*) from schedule_items s join contracts c on c.id = s.contract_id
-                    where c.status in ('ACTIVE','LATE') and s.status <> 'PAID' and s.due_date = :today::date)    as today_cnt,
+                    where c.status in ('ACTIVE','LATE') and s.status <> 'PAID' and s.due_date = :today::date
+                      and (cast(:branch as bigint) is null or c.branch_id = :branch))    as today_cnt,
                   (select count(*) from schedule_items s join contracts c on c.id = s.contract_id
-                    where c.status in ('ACTIVE','LATE') and s.status <> 'PAID' and s.due_date = :tomorrow::date) as tomorrow_cnt,
-                  (select count(*) from contracts where status = 'ACTIVE')                            as active_cnt,
-                  (select count(*) from contracts where status = 'LATE')                              as late_cnt,
+                    where c.status in ('ACTIVE','LATE') and s.status <> 'PAID' and s.due_date = :tomorrow::date
+                      and (cast(:branch as bigint) is null or c.branch_id = :branch)) as tomorrow_cnt,
+                  (select count(*) from contracts c where c.status = 'ACTIVE' and (cast(:branch as bigint) is null or c.branch_id = :branch))            as active_cnt,
+                  (select count(*) from contracts c where c.status = 'LATE' and (cast(:branch as bigint) is null or c.branch_id = :branch))              as late_cnt,
                   -- shu oyda to'lanishi kerak bo'lganning qancha qismi to'langan
                   (select case when sum(s.amount) = 0 then null
                                else round(100.0 * sum(s.paid_amount) / sum(s.amount), 1) end
                      from schedule_items s join contracts c on c.id = s.contract_id
-                    where c.status <> 'CANCELLED' and s.due_date >= :monthStart::date and s.due_date <= :today::date) as collection_rate,
+                    where c.status <> 'CANCELLED' and s.due_date >= :monthStart::date and s.due_date <= :today::date
+                      and (cast(:branch as bigint) is null or c.branch_id = :branch)) as collection_rate,
                   coalesce((select sum(s.amount - s.paid_amount) from schedule_items s
                             join contracts c on c.id = s.contract_id
-                            where c.status in ('ACTIVE','LATE') and s.status <> 'PAID'
+                            where c.status in ('ACTIVE','LATE') and s.status <> 'PAID' and (cast(:branch as bigint) is null or c.branch_id = :branch)
                               and exists (select 1 from schedule_items x
                                           where x.contract_id = c.id and x.status <> 'PAID'
                                             and x.due_date < :today::date - 90)), 0)                       as npl90
@@ -99,10 +109,11 @@ public class DashboardService {
                   select generate_series(:yearAgo::date, :monthStart::date, interval '1 month')::date as m
                 )
                 select to_char(m.m, 'YYYY-MM') as month,
-                       coalesce((select sum(p.amount) from payments p
-                                  where date_trunc('month', p.paid_at at time zone 'Asia/Tashkent')::date = m.m), 0) as collected,
+                       coalesce((select sum(p.amount) from payments p join contracts c on c.id = p.contract_id
+                                  where date_trunc('month', p.paid_at at time zone 'Asia/Tashkent')::date = m.m
+                                    and (cast(:branch as bigint) is null or c.branch_id = :branch)), 0) as collected,
                        coalesce((select sum(c.cost_price - c.down_payment) from contracts c
-                                  where c.status <> 'CANCELLED'
+                                  where c.status <> 'CANCELLED' and (cast(:branch as bigint) is null or c.branch_id = :branch)
                                     and date_trunc('month', c.created_at at time zone 'Asia/Tashkent')::date = m.m), 0) as issued
                 from months m
                 order by m.m
@@ -123,9 +134,9 @@ public class DashboardService {
                   -- to'langan qismga to'g'ri keladigan ustama (ulush bo'yicha)
                   coalesce((select round(sum(s.markup_part * s.paid_amount / nullif(s.amount, 0)))
                               from schedule_items s join contracts c2 on c2.id = s.contract_id
-                             where c2.status <> 'CANCELLED'), 0)                              as earned_profit
-                from contracts
-                where status <> 'CANCELLED'
+                             where c2.status <> 'CANCELLED' and (cast(:branch as bigint) is null or c2.branch_id = :branch)), 0)                              as earned_profit
+                from contracts c
+                where c.status <> 'CANCELLED' and (cast(:branch as bigint) is null or c.branch_id = :branch)
                 """, p, (rs, i) -> {
             BigDecimal expected = rs.getBigDecimal("expected_profit");
             BigDecimal earned = rs.getBigDecimal("earned_profit");
@@ -142,15 +153,15 @@ public class DashboardService {
                 select to_char(m.m, 'YYYY-MM') as month,
                        coalesce((select sum(s.markup_part) from schedule_items s
                                   join contracts c on c.id = s.contract_id
-                                 where c.status in ('ACTIVE','LATE')
+                                 where c.status in ('ACTIVE','LATE') and (cast(:branch as bigint) is null or c.branch_id = :branch)
                                    and date_trunc('month', s.due_date)::date = m.m), 0) as profit
                 from months m
                 order by m.m
                 """, p, (rs, i) -> new ProfitPoint(rs.getString("month"), rs.getBigDecimal("profit")));
 
         List<RiskSlice> risk = jdbc.query("""
-                select risk_category, count(*) as cnt from contracts
-                where status in ('ACTIVE','LATE') and risk_category is not null
+                select risk_category, count(*) as cnt from contracts c
+                where status in ('ACTIVE','LATE') and risk_category is not null and (cast(:branch as bigint) is null or c.branch_id = :branch)
                 group by risk_category order by risk_category
                 """, p, (rs, i) -> new RiskSlice(rs.getString("risk_category"), rs.getLong("cnt")));
 
@@ -161,7 +172,7 @@ public class DashboardService {
                 join products pr on pr.id = c.product_id
                 join categories cat on cat.id = pr.category_id
                 join schedule_items s on s.contract_id = c.id
-                where c.status in ('ACTIVE','LATE')
+                where c.status in ('ACTIVE','LATE') and (cast(:branch as bigint) is null or c.branch_id = :branch)
                 group by cat.code, cat.name_uz, cat.name_ru
                 order by debt desc
                 """, p, (rs, i) -> new CategorySlice(rs.getString("code"), rs.getString("name_uz"),

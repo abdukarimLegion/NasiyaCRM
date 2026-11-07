@@ -1,5 +1,5 @@
 -- =====================================================================
--- V4: Audit log.
+-- V11: Audit log.
 -- Moliyaviy tizimda kim, qachon va qanday o'zgarish qilgani yozilib boradi.
 -- Yozuvlar biznes tranzaksiyasi bilan birga commit qilinadi.
 -- =====================================================================

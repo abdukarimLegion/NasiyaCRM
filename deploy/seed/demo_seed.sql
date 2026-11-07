@@ -371,6 +371,83 @@ BEGIN
        AND c.id IN (SELECT id FROM demo_seed_rows WHERE tbl = 'clients');
 END $$;
 
+-- ---------------------------------------------------------------- filiallar, xodimlar, KPI
+-- Demo xodimlar tizimga kira olmaydi (parol xeshi yaroqsiz) — ular faqat KPI va filial
+-- hisobotlarini to'ldirish uchun. demo_remove.sql ularni ham o'chiradi.
+DO $$
+DECLARE
+    v_main BIGINT; v_chl BIGINT; v_sam BIGINT;
+    v_off1 BIGINT; v_off2 BIGINT; v_off3 BIGINT; v_cash BIGINT; v_coll BIGINT;
+    r RECORD;
+    i INT := 0;
+BEGIN
+    SELECT id INTO v_main FROM branches WHERE tenant_id = 1 AND code = 'MAIN';
+
+    INSERT INTO branches (tenant_id, code, name, address, phone, manager_name, monthly_target)
+    SELECT 1, x.code, x.name, x.address, x.phone, x.manager, x.target
+      FROM (VALUES ('DEMO-CHL', 'Chilonzor filiali (demo)', 'Toshkent sh., Chilonzor tumani', '+998 71 200-11-22', 'Rustam Aliyev', 30000000),
+                   ('DEMO-SAM', 'Samarqand filiali (demo)', 'Samarqand sh., Registon ko''chasi', '+998 66 233-44-55', 'Nodira Karimova', 25000000))
+           AS x(code, name, address, phone, manager, target)
+     WHERE NOT EXISTS (SELECT 1 FROM branches b WHERE b.tenant_id = 1 AND b.code = x.code);
+    INSERT INTO demo_seed_rows SELECT 'branches', id FROM branches WHERE code IN ('DEMO-CHL', 'DEMO-SAM')
+    ON CONFLICT DO NOTHING;
+    SELECT id INTO v_chl FROM branches WHERE tenant_id = 1 AND code = 'DEMO-CHL';
+    SELECT id INTO v_sam FROM branches WHERE tenant_id = 1 AND code = 'DEMO-SAM';
+
+    INSERT INTO users (tenant_id, username, password_hash, full_name, role, branch_id, active)
+    SELECT 1, x.username, '!demo-no-login', x.full_name, x.role, x.branch, TRUE
+      FROM (VALUES ('demo.operator1', 'Kamola Nazarova (demo)',  'CREDIT_OFFICER', v_main),
+                   ('demo.operator2', 'Bekzod Rahimov (demo)',   'CREDIT_OFFICER', v_chl),
+                   ('demo.operator3', 'Shahzod Ergashev (demo)', 'CREDIT_OFFICER', v_sam),
+                   ('demo.kassir',    'Malika Tursunova (demo)', 'CASHIER',        v_main),
+                   ('demo.undiruvchi','Jasur Mahmudov (demo)',   'COLLECTOR',      v_main))
+           AS x(username, full_name, role, branch)
+     WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.tenant_id = 1 AND u.username = x.username);
+    INSERT INTO demo_seed_rows SELECT 'users', id FROM users WHERE username LIKE 'demo.%'
+    ON CONFLICT DO NOTHING;
+    SELECT id INTO v_off1 FROM users WHERE username = 'demo.operator1';
+    SELECT id INTO v_off2 FROM users WHERE username = 'demo.operator2';
+    SELECT id INTO v_off3 FROM users WHERE username = 'demo.operator3';
+    SELECT id INTO v_cash FROM users WHERE username = 'demo.kassir';
+    SELECT id INTO v_coll FROM users WHERE username = 'demo.undiruvchi';
+
+    FOR r IN SELECT id FROM contracts WHERE id IN (SELECT id FROM demo_seed_rows WHERE tbl = 'contracts') ORDER BY id LOOP
+        i := i + 1;
+        UPDATE contracts SET branch_id = CASE i % 3 WHEN 0 THEN v_main WHEN 1 THEN v_chl ELSE v_sam END,
+                             officer_id = CASE i % 3 WHEN 0 THEN v_off1 WHEN 1 THEN v_off2 ELSE v_off3 END
+         WHERE id = r.id;
+    END LOOP;
+    UPDATE contracts SET collector_id = v_coll
+     WHERE status = 'LATE' AND id IN (SELECT id FROM demo_seed_rows WHERE tbl = 'contracts');
+    UPDATE payments p SET cashier_id = CASE WHEN c.branch_id = v_main THEN v_cash ELSE c.officer_id END
+      FROM contracts c
+     WHERE c.id = p.contract_id AND c.id IN (SELECT id FROM demo_seed_rows WHERE tbl = 'contracts');
+    UPDATE collection_actions SET user_id = v_coll
+     WHERE user_id IS NULL AND contract_id IN (SELECT id FROM demo_seed_rows WHERE tbl = 'contracts');
+
+    -- eng ko'p kechikkan demo shartnoma bo'yicha sud ishi (da'vo — faqat qolgan qarz, jarimasiz)
+    INSERT INTO legal_cases (tenant_id, contract_id, status, claim_amount, court_name, filed_at, note, assigned_user_id)
+    SELECT 1, x.id, 'FILED', x.rem, 'Tumanlararo fuqarolik ishlari sudi (demo)', current_date - 12,
+           'Talabnoma javobsiz qoldi', v_coll
+      FROM (SELECT c.id, sum(s.amount - s.paid_amount) AS rem,
+                   min(s.due_date) FILTER (WHERE s.status <> 'PAID' AND s.due_date < current_date) AS first_late
+              FROM contracts c JOIN schedule_items s ON s.contract_id = c.id
+             WHERE c.status = 'LATE' AND c.id IN (SELECT id FROM demo_seed_rows WHERE tbl = 'contracts')
+             GROUP BY c.id) x
+     WHERE x.first_late IS NOT NULL AND x.first_late < current_date - 60
+     ORDER BY x.first_late
+     LIMIT 1;
+
+    INSERT INTO kpi_targets (tenant_id, user_id, contracts_count, sales_volume, collected_amount, recovered_amount,
+                             actions_count, bonus_amount) VALUES
+        (1, v_off1, 3, 8000000, 4000000, 0, 0, 1500000),
+        (1, v_off2, 3, 8000000, 4000000, 0, 0, 1500000),
+        (1, v_off3, 3, 8000000, 4000000, 0, 0, 1200000),
+        (1, v_cash, 0, 0, 12000000, 0, 0, 1000000),
+        (1, v_coll, 0, 0, 0, 2000000, 25, 1800000)
+    ON CONFLICT (tenant_id, user_id) DO NOTHING;
+END $$;
+
 -- ---------------------------------------------------------------- natija
 SELECT count(*)                                  AS shartnomalar,
        count(*) FILTER (WHERE status = 'ACTIVE') AS faol,

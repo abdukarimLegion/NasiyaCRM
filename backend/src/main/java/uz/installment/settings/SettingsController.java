@@ -46,7 +46,7 @@ public class SettingsController {
     }
 
     @PutMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('SETTINGS_EDIT')")
     public SettingsDto update(@Valid @RequestBody SettingsDto dto) {
         return SettingsDto.of(service.update(dto));
     }

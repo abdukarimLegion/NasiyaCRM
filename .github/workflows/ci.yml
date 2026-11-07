@@ -122,4 +122,52 @@ jobs:
           check -X POST -H 'Content-Type: application/json' -d "{\"contractId\":$CID,\"amount\":1000,\"method\":\"CASH\"}" localhost:8080/api/payments
           check -X POST -H 'Content-Type: application/json' -d '{"text":"Smoke test SMS"}' localhost:8080/api/collection/contracts/$CID/sms
           check localhost:8080/api/collection/contracts/$CID/actions
+          # filiallar, KPI, prognoz, sud ishlari, ruxsatlar, hujjatlar
+          check localhost:8080/api/branches
+          check localhost:8080/api/branches/stats
+          check localhost:8080/api/kpi
+          check "localhost:8080/api/kpi/users/1/history?months=3"
+          check "localhost:8080/api/forecast?horizon=12&growth=10&collectionAdj=-5"
+          check "localhost:8080/api/forecast?horizon=12&stress=HIGH&partnerShare=30&downPct=30&markup=28&fundingCost=24"
+          # arizalar, hamkorlar, verifikatsiya, tahlil, ombor, shaxsiy rollar, sozlamalar
+          check localhost:8080/api/applications/counts
+          check "localhost:8080/api/applications?size=5"
+          check localhost:8080/api/partners
+          check "localhost:8080/api/partners/offers?clientId=$CLID&risk=A&goodsTotal=8000000&downPayment=0&term=12"
+          check localhost:8080/api/verifications/clients/$CLID/status
+          check localhost:8080/api/settings/advanced
+          check "localhost:8080/api/analytics?months=12"
+          check "localhost:8080/api/warehouse/analytics?cover=30"
+          check localhost:8080/api/warehouse/suppliers
+          check localhost:8080/api/warehouse/orders
+          check localhost:8080/api/permissions/custom-roles
+          check localhost:8080/api/clients/$CLID/credit-reports
+          check "localhost:8080/api/contracts/quote" -X POST -H 'Content-Type: application/json' \
+            -d '{"items":[{"productId":1,"quantity":2}],"termMonths":6}'
+          check localhost:8080/api/collection/legal
+          check localhost:8080/api/permissions
+          check localhost:8080/api/documents/templates
+          pdf() {
+            out=$(curl -s -o /tmp/doc.pdf -w '%{http_code} %{content_type}' -H "Authorization: Bearer $TOKEN" "$@")
+            echo "$out ${@: -1}"
+            case "$out" in "200 application/pdf"*) head -c 5 /tmp/doc.pdf | grep -q '%PDF' || fail=1 ;; *) fail=1 ;; esac
+          }
+          pdf "localhost:8080/api/documents/contracts/$CID/contract?lang=ru"
+          OD=$(curl -fsS -H "Authorization: Bearer $TOKEN" localhost:8080/api/collection/overdue | python3 -c 'import sys,json;d=json.load(sys.stdin);print(d[0]["contractId"] if d else "")')
+          if [ -n "$OD" ]; then
+            pdf -X POST "localhost:8080/api/documents/contracts/$OD/demand?lang=uz"
+            zc=$(curl -s -o /tmp/pkg.zip -w '%{http_code} %{content_type}' -X POST -H "Authorization: Bearer $TOKEN" "localhost:8080/api/documents/contracts/$OD/legal-package?lang=uz")
+            echo "$zc legal-package"
+            case "$zc" in "200 application/zip"*) python3 -c 'import zipfile;assert len(zipfile.ZipFile("/tmp/pkg.zip").namelist())==3' || fail=1 ;; *) fail=1 ;; esac
+          fi
+          # ruxsatlar: kassir prognoz va xodimlar ro'yxatini ko'rmasligi kerak
+          check -X POST -H 'Content-Type: application/json' \
+            -d '{"username":"smoke.cashier","password":"smoke12345","fullName":"Smoke Kassir","role":"CASHIER"}' localhost:8080/api/users
+          CT=$(curl -fsS -H 'Content-Type: application/json' -d '{"username":"smoke.cashier","password":"smoke12345"}' \
+            localhost:8080/api/auth/login | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
+          for path in forecast analytics users permissions; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $CT" localhost:8080/api/$path)
+            echo "$code (kassir) /api/$path"
+            [ "$code" = "403" ] || fail=1
+          done
           if [ "$fail" != 0 ]; then tail -n 80 /tmp/app.log; exit 1; fi

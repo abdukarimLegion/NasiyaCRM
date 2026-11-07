@@ -74,6 +74,8 @@ spring:
     locations: classpath:db/migration,classpath:db/demo
     # dev'da yuklangan demo migratsiya (V100) prod'da topilmasa xato bermasin
     ignore-migration-patterns: "*:missing"
+    # demo migratsiyalari (V100+) allaqachon qo'llangan bazada yangi V6, V7... ham ishlashi uchun
+    out-of-order: true
   jpa:
     show-sql: false
 

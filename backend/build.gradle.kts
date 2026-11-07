@@ -38,6 +38,9 @@ dependencies {
 
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:$springdocVersion")
 
+    // Shartnoma, talabnoma va da'vo arizasi PDF'lari
+    implementation("com.github.librepdf:openpdf:2.0.5")
+
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
     testCompileOnly("org.projectlombok:lombok")

@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import uz.installment.config.AppProperties;
 
-/** Bazada birorta ham foydalanuvchi bo'lmasa, .env dagi login/parol bilan ADMIN yaratadi. */
+/** Bazada birorta ham administrator bo'lmasa, .env dagi login/parol bilan ADMIN yaratadi. */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -22,12 +22,17 @@ public class AdminBootstrap implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        if (users.count() > 0) {
+        // Birorta ham administrator bo'lmasa yaratiladi (demo xodimlar oldin qo'shilgan bo'lsa ham)
+        if (users.existsByRole(Role.ADMIN)) {
             return;
         }
         var cfg = props.bootstrapAdmin();
         if (cfg == null || cfg.password() == null || cfg.password().isBlank()) {
-            log.warn("Foydalanuvchilar yo'q va APP_ADMIN_PASSWORD berilmagan — admin yaratilmadi.");
+            log.warn("Administrator yo'q va APP_ADMIN_PASSWORD berilmagan — admin yaratilmadi.");
+            return;
+        }
+        if (users.existsByUsername(cfg.username())) {
+            log.warn("Administrator yo'q, lekin '{}' logini band — admin yaratilmadi.", cfg.username());
             return;
         }
         User admin = new User();

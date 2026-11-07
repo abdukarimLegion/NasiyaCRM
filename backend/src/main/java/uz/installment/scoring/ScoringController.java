@@ -3,6 +3,7 @@ package uz.installment.scoring;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -15,6 +16,7 @@ import java.util.Arrays;
 import java.util.List;
 
 @RestController
+@PreAuthorize("hasAuthority('CONTRACTS_CREATE')")
 @RequestMapping("/api/scoring")
 @RequiredArgsConstructor
 public class ScoringController {

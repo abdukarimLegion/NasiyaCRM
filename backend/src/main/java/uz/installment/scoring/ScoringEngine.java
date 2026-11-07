@@ -30,7 +30,7 @@ public final class ScoringEngine {
     }
 
     public enum StopFactor {
-        BLACKLIST, FRAUD, DUP_PINFL, PASSPORT_EXPIRED, INCOME_NOT_VERIFIED, COURT, OVERDUE, OVERLIMIT
+        BLACKLIST, FRAUD, DUP_PINFL, PASSPORT_EXPIRED, INCOME_NOT_VERIFIED, COURT, OVERDUE, OVERLIMIT, EMPLOYEE_RESTRICTED
     }
 
     public enum RiskCategory {

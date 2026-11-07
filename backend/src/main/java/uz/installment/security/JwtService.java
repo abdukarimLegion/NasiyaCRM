@@ -46,12 +46,12 @@ public class JwtService {
                 .compact();
     }
 
-    public Optional<AuthUser> parse(String token) {
+    /** Token to'g'ri bo'lsa foydalanuvchi id'si. Rol va ruxsatlar har so'rovda {@link AccessService} dan olinadi. */
+    public Optional<Long> parse(String token) {
         try {
             Claims c = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
             Number uid = (Number) c.get("uid");
-            Role role = Role.valueOf((String) c.get("role"));
-            return Optional.of(new AuthUser(uid.longValue(), c.getSubject(), role));
+            return Optional.of(uid.longValue());
         } catch (JwtException | IllegalArgumentException | ClassCastException | NullPointerException e) {
             log.debug("Yaroqsiz token: {}", e.getMessage());
             return Optional.empty();

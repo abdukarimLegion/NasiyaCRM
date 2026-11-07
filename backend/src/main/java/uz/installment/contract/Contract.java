@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import uz.installment.branch.Branch;
 import uz.installment.client.Client;
 import uz.installment.common.AuditedEntity;
 import uz.installment.product.Product;
@@ -102,6 +103,15 @@ public class Contract extends AuditedEntity {
     @JoinColumn(name = "officer_id")
     private User officer;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "branch_id")
+    private Branch branch;
+
+    /** Undirish bo'yicha mas'ul xodim */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "collector_id")
+    private User collector;
+
     @Column(name = "guarantor_name", length = 150)
     private String guarantorName;
 
@@ -117,6 +127,19 @@ public class Contract extends AuditedEntity {
     @OneToMany(mappedBy = "contract", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("seq ASC")
     private List<ScheduleItem> schedule = new ArrayList<>();
+
+    @OneToMany(mappedBy = "contract", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC")
+    private List<ContractItem> items = new ArrayList<>();
+
+    /** Qaysi arizadan tuzilgan (to'g'ridan-to'g'ri tuzilgan eski shartnomalarda ham ariza bor, V5 dan keyin). */
+    @Column(name = "application_id")
+    private Long applicationId;
+
+    public void addItem(ContractItem item) {
+        item.setContract(this);
+        items.add(item);
+    }
 
     public void addScheduleItem(ScheduleItem item) {
         item.setContract(this);
