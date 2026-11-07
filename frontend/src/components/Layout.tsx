@@ -31,6 +31,7 @@ export const NAV: { group: string; items: NavItem[] }[] = [
   ] },
   { group: 'nav_analytics', items: [
     { to: '/kpi', key: 'kpiNav', icon: 'target' },
+    { to: '/analytics', key: 'analyticsNav', icon: 'analytics', perms: ['ANALYTICS_VIEW'] },
     { to: '/forecast', key: 'forecastNav', icon: 'trend', perms: ['FORECAST_VIEW'] },
   ] },
   { group: 'nav_system', items: [

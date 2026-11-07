@@ -19,6 +19,7 @@ import ProductsPage from './pages/ProductsPage';
 import NotificationsPage from './pages/NotificationsPage';
 import SettingsPage from './pages/SettingsPage';
 import KpiPage from './pages/KpiPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 import ForecastPage from './pages/ForecastPage';
 import BranchesPage from './pages/BranchesPage';
 
@@ -73,6 +74,7 @@ export default function App() {
         <Route path="products" element={<Guard perms={['PRODUCTS_VIEW']}><ProductsPage /></Guard>} />
         <Route path="notifications" element={<Guard perms={['NOTIFICATIONS_VIEW']}><NotificationsPage /></Guard>} />
         <Route path="kpi" element={<KpiPage />} />
+        <Route path="analytics" element={<Guard perms={['ANALYTICS_VIEW']}><AnalyticsPage /></Guard>} />
         <Route path="forecast" element={<Guard perms={['FORECAST_VIEW']}><ForecastPage /></Guard>} />
         <Route path="branches" element={<Guard perms={['BRANCHES_VIEW']}><BranchesPage /></Guard>} />
         <Route path="settings/:tab?" element={<Guard perms={['SETTINGS_EDIT', 'USERS_MANAGE', 'DOCUMENTS_EDIT']}><SettingsPage /></Guard>} />

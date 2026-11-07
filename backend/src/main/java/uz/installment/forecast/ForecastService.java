@@ -366,6 +366,12 @@ public class ForecastService {
         return BigDecimal.valueOf(v).setScale(scale, RoundingMode.HALF_UP);
     }
 
+    /** Joriy portfel bo'yicha ehtimoliy yo'qotish zaxirasi (analitika sahifasi uchun). */
+    public List<EclBucket> eclFor(Long branchId) {
+        var p = new MapSqlParameterSource().addValue("today", LocalDate.now(clock)).addValue("branch", branchId);
+        return ecl(p, "(cast(:branch as bigint) is null or c.branch_id = :branch)");
+    }
+
     private List<EclBucket> ecl(MapSqlParameterSource p, String branch) {
         Map<Integer, BigDecimal> exposure = new HashMap<>();
         jdbc.query("""

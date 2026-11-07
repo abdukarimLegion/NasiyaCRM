@@ -26,7 +26,7 @@ export type Permission =
   | 'PAYMENTS_VIEW' | 'PAYMENTS_ACCEPT' | 'PRODUCTS_VIEW' | 'PRODUCTS_EDIT'
   | 'COLLECTION_VIEW' | 'COLLECTION_WORK' | 'COLLECTION_ASSIGN' | 'COLLECTION_LEGAL'
   | 'NOTIFICATIONS_VIEW' | 'NOTIFICATIONS_EDIT'
-  | 'KPI_VIEW_ALL' | 'KPI_MANAGE' | 'FORECAST_VIEW'
+  | 'KPI_VIEW_ALL' | 'KPI_MANAGE' | 'FORECAST_VIEW' | 'ANALYTICS_VIEW'
   | 'BRANCHES_VIEW' | 'BRANCHES_MANAGE' | 'ALL_BRANCHES'
   | 'USERS_MANAGE' | 'SETTINGS_EDIT' | 'DOCUMENTS_EDIT';
 
@@ -745,4 +745,20 @@ export interface VerificationResult {
   status: 'PENDING' | 'VERIFIED' | 'FAILED' | 'EXPIRED';
   matchPct?: number;
   verifiedAt?: string;
+}
+
+export interface AnalyticsReport {
+  months: number;
+  categories: {
+    code: string; nameUz: string; nameRu: string; contracts: number; volume: number; avgTermMonths?: number;
+    avgMarkupPct?: number; expectedProfit: number; earnedProfit: number; debt: number; overdue: number;
+    overduePct?: number; nplDebt: number; nplPct?: number; sharePct?: number;
+  }[];
+  terms: { bucket: string; contracts: number; volume: number; avgMarkupPct?: number; debt: number; overduePct?: number; nplPct?: number }[];
+  aging: { key: 'current' | 'd1_30' | 'd31_60' | 'd61_90' | 'd90'; contracts: number; debt: number; sharePct?: number }[];
+  branches: { id: number; name: string; contracts: number; volume: number; collected: number; debt: number; overduePct?: number; target?: number; planPct?: number }[];
+  managers: { id: number; name: string; branch?: string; contracts: number; volume: number; avgScore?: number; debt: number; overduePct?: number }[];
+  monthly: { month: string; issued: number; collected: number; profit: number; partnerVolume: number; partnerCommission: number }[];
+  partners: { code: string; name: string; deals: number; volume: number; commission: number }[];
+  pnl: { profit: number; opex: number; operatingProfit: number; eclProvision: number; profitAfterProvision: number; partnerCommission: number; months: number };
 }
