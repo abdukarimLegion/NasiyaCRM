@@ -17,6 +17,7 @@ import uz.installment.branch.Branch;
 import uz.installment.client.Client;
 import uz.installment.common.AuditedEntity;
 import uz.installment.contract.Contract;
+import uz.installment.partner.Partner;
 import uz.installment.scoring.ScoringEngine.Decision;
 import uz.installment.scoring.ScoringEngine.RiskCategory;
 import uz.installment.security.User;
@@ -109,4 +110,25 @@ public class Application extends AuditedEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contract_id")
     private Contract contract;
+
+    /** INTERNAL (o'z murobaha shartnomasi) yoki hamkor kodi. */
+    @Column(nullable = false, length = 20)
+    private String provider = "INTERNAL";
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "partner_id")
+    private Partner partner;
+
+    @Column(name = "partner_tx_id", length = 100)
+    private String partnerTxId;
+
+    @Column(name = "partner_handover_at")
+    private Instant partnerHandoverAt;
+
+    @Column(name = "partner_notes", length = 500)
+    private String partnerNotes;
+
+    /** Hamkor do'kondan ushlab qolgan komissiya (so'm). */
+    @Column(name = "partner_commission", precision = 18, scale = 2)
+    private BigDecimal partnerCommission;
 }

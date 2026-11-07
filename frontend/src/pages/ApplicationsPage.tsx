@@ -3,14 +3,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, qs } from '../api/client';
-import type { ApplicationStatus, ApplicationView, Page } from '../api/types';
+import type { ApplicationStatus, ApplicationView, Page, Partner } from '../api/types';
 import { Badge, Btn, Card, Empty, ErrorBox, Field, Icon, Modal, RiskPill, Stat, type Tone } from '../components/ui';
 import { useAuth } from '../lib/auth';
 import { useBranch } from '../lib/branch';
 import { fmtDateTime, fmtSom } from '../lib/format';
 
-const STATUSES: (ApplicationStatus | '')[] = ['', 'PENDING', 'APPROVED', 'CONTRACTED', 'REJECTED'];
-const TONE: Record<ApplicationStatus, Tone> = { PENDING: 'warn', APPROVED: 'info', CONTRACTED: 'success', REJECTED: 'danger' };
+const STATUSES: (ApplicationStatus | '')[] = ['', 'PENDING', 'APPROVED', 'CONTRACTED', 'PARTNER', 'REJECTED'];
+const TONE: Record<ApplicationStatus, Tone> = { PENDING: 'warn', APPROVED: 'info', CONTRACTED: 'success', REJECTED: 'danger', PARTNER: 'neutral' };
 
 export function ApplicationBadge({ status }: { status: ApplicationStatus }) {
   const { t } = useTranslation();
@@ -68,6 +68,14 @@ export default function ApplicationsPage() {
     mutationFn: (id: number) => api.post<ApplicationView>(`/api/applications/${id}/reject`, { reason: reason || undefined }),
     onSuccess: (a) => { setRejecting(null); setReason(''); setOpen(a); refresh(); },
   });
+  const [handing, setHanding] = useState<ApplicationView | null>(null);
+  const [partnerCode, setPartnerCode] = useState('');
+  const [txId, setTxId] = useState('');
+  const partnerList = useQuery({ queryKey: ['partners'], queryFn: () => api.get<Partner[]>('/api/partners'), enabled: !!handing });
+  const handover = useMutation({
+    mutationFn: (id: number) => api.post<ApplicationView>(`/api/applications/${id}/handover`, { partnerCode, transactionId: txId || undefined }),
+    onSuccess: (a) => { setHanding(null); setTxId(''); setOpen(a); refresh(); },
+  });
   const toContract = useMutation({
     mutationFn: (id: number) => api.post<ApplicationView>(`/api/applications/${id}/contract`),
     onSuccess: (a) => { refresh(); if (a.contractId) nav(`/contracts/${a.contractId}`); },
@@ -89,7 +97,7 @@ export default function ApplicationsPage() {
       <div className="kpi4">
         <Stat icon="clock" tone="gold" label={t('ap_PENDING')} value={c?.PENDING ?? '—'} sub={t('ap_PENDING_sub')} />
         <Stat icon="check" tone="info" label={t('ap_APPROVED')} value={c?.APPROVED ?? '—'} sub={t('ap_APPROVED_sub')} />
-        <Stat icon="contracts" tone="success" label={t('ap_CONTRACTED')} value={c?.CONTRACTED ?? '—'} sub={t('ap_CONTRACTED_sub')} />
+        <Stat icon="contracts" tone="success" label={t('ap_CONTRACTED')} value={c?.CONTRACTED ?? '—'} sub={<>{t('ap_CONTRACTED_sub')}{(c?.PARTNER ?? 0) > 0 && <> · {t('ap_PARTNER')}: <b>{c?.PARTNER}</b></>}</>} />
         <Stat icon="x" tone="danger" label={t('ap_REJECTED')} value={c?.REJECTED ?? '—'} sub={t('ap_REJECTED_sub')} />
       </div>
 
@@ -142,7 +150,7 @@ export default function ApplicationsPage() {
                   <td onClick={(e) => e.stopPropagation()}>
                     <ActionButtons a={a} can={can} busy={approve.isPending || toContract.isPending}
                       onApprove={() => approve.mutate(a.id)} onReject={() => setRejecting(a)}
-                      onContract={() => toContract.mutate(a.id)} />
+                      onContract={() => toContract.mutate(a.id)} onHandover={() => { setHanding(a); setPartnerCode(''); }} />
                   </td>
                 </tr>
               ))}
@@ -163,7 +171,7 @@ export default function ApplicationsPage() {
         <Modal title={`${t('application')} · ${open.applicationNo}`} onClose={closeDetail} wide
           footer={<ActionButtons a={open} can={can} busy={approve.isPending || toContract.isPending} full
             onApprove={() => approve.mutate(open.id)} onReject={() => setRejecting(open)}
-            onContract={() => toContract.mutate(open.id)} />}>
+            onContract={() => toContract.mutate(open.id)} onHandover={() => { setHanding(open); setPartnerCode(''); }} />}>
           <div className="col" style={{ gap: 14 }}>
             <div className="row between">
               <b>{open.clientName}</b><ApplicationBadge status={open.status} />
@@ -188,8 +196,34 @@ export default function ApplicationsPage() {
               {open.officerName && <><dt>{t('officer')}</dt><dd>{open.officerName}</dd></>}
               {open.branchName && <><dt>{t('branch')}</dt><dd>{open.branchName}</dd></>}
               {open.decidedByName && <><dt>{t('decidedBy')}</dt><dd>{open.decidedByName} · {fmtDateTime(open.decidedAt, lang)}</dd></>}
+              {open.provider !== 'INTERNAL' && (
+                <><dt>{t('provider')}</dt><dd>{open.partnerName} · {open.partnerTxId ?? '—'}</dd>
+                  <dt>{t('commission')}</dt><dd>{fmtSom(open.partnerCommission, lang)}</dd></>
+              )}
               {open.contractNo && <><dt>{t('contract')}</dt><dd><Link to={`/contracts/${open.contractId}`}>{open.contractNo}</Link></dd></>}
             </dl>
+          </div>
+        </Modal>
+      )}
+
+      {handing && (
+        <Modal title={`${t('handover')} · ${handing.applicationNo}`} onClose={() => setHanding(null)}
+          footer={<>
+            <Btn variant="ghost" onClick={() => setHanding(null)}>{t('cancel')}</Btn>
+            <Btn icon="check" disabled={!partnerCode || handover.isPending} onClick={() => handover.mutate(handing.id)}>{t('handover')}</Btn>
+          </>}>
+          <div className="col" style={{ gap: 12 }}>
+            <ErrorBox error={handover.error} />
+            <span className="faint" style={{ fontSize: 12.5 }}>{t('handoverHint')}</span>
+            <Field label={t('provider')} req>
+              <select className="select" value={partnerCode} onChange={(e) => setPartnerCode(e.target.value)}>
+                <option value="">—</option>
+                {partnerList.data?.filter((p) => p.active).map((p) => <option key={p.id} value={p.code}>{p.name} · {p.commissionPct}%</option>)}
+              </select>
+            </Field>
+            <Field label={t('partnerTx')} hint={t('partnerTxHint')}>
+              <input className="input" value={txId} onChange={(e) => setTxId(e.target.value)} maxLength={100} />
+            </Field>
           </div>
         </Modal>
       )}
@@ -212,9 +246,9 @@ export default function ApplicationsPage() {
   );
 }
 
-function ActionButtons({ a, can, busy, onApprove, onReject, onContract, full }: {
+function ActionButtons({ a, can, busy, onApprove, onReject, onContract, onHandover, full }: {
   a: ApplicationView; can: (...p: import('../api/types').Permission[]) => boolean; busy: boolean; full?: boolean;
-  onApprove: () => void; onReject: () => void; onContract: () => void;
+  onApprove: () => void; onReject: () => void; onContract: () => void; onHandover: () => void;
 }) {
   const { t } = useTranslation();
   const canDecide = can('CONTRACTS_APPROVE');
@@ -224,6 +258,9 @@ function ActionButtons({ a, can, busy, onApprove, onReject, onContract, full }: 
       {a.status === 'PENDING' && canDecide && <Btn size={sz} icon="check" disabled={busy} onClick={onApprove}>{t('approve')}</Btn>}
       {(a.status === 'PENDING' || a.status === 'APPROVED') && canDecide && (
         <Btn size={sz} variant="ghost" icon="x" onClick={onReject}>{t('reject')}</Btn>
+      )}
+      {a.status === 'APPROVED' && can('CONTRACTS_CREATE') && (
+        <Btn size={sz} variant="ghost" icon="globe" disabled={busy} onClick={onHandover}>{t('handover')}</Btn>
       )}
       {a.status === 'APPROVED' && can('CONTRACTS_CREATE') && (
         <Btn size={sz} variant="gold" icon="contracts" disabled={busy} onClick={onContract}>{t('makeContract')}</Btn>

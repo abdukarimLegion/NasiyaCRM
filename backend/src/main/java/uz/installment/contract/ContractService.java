@@ -211,6 +211,16 @@ public class ContractService {
         return saved;
     }
 
+    /** Hamkorga topshirilgan savdo: shartnoma tuzilmaydi, lekin tovar ombordan chiqadi. */
+    @Transactional
+    public Prepared reserveStock(QuoteRequest terms) {
+        Prepared prep = prepare(terms, true);
+        for (Line l : prep.lines()) {
+            l.product().setStock(l.product().getStock() - l.quantity());
+        }
+        return prep;
+    }
+
     /** Filial: xodimning o'z filiali; filiali yo'q (bosh ofis) yoki barcha filiallarga ruxsati bo'lsa — tanlangani. */
     public Branch resolveBranch(Long requested, AuthUser officer) {
         Long branchId = officer.branchId() != null && !officer.has(Permission.ALL_BRANCHES)

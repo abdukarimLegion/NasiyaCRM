@@ -17,7 +17,7 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
     @Query(value = "select nextval('application_no_seq')", nativeQuery = true)
     long nextNo();
 
-    @EntityGraph(attributePaths = {"client", "branch", "officer", "decidedBy", "contract"})
+    @EntityGraph(attributePaths = {"client", "branch", "officer", "decidedBy", "contract", "partner"})
     @Query("""
             select a from Application a
             where (:status is null or a.status = :status)
@@ -30,7 +30,7 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
     Page<Application> search(@Param("status") ApplicationStatus status, @Param("branchId") Long branchId,
                              @Param("officerId") Long officerId, @Param("q") String q, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"client", "branch", "officer", "decidedBy", "contract"})
+    @EntityGraph(attributePaths = {"client", "branch", "officer", "decidedBy", "contract", "partner"})
     @Query("select a from Application a where a.id = :id")
     Optional<Application> findDetailed(@Param("id") Long id);
 

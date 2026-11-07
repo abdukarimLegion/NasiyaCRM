@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { api, qs } from '../api/client';
 import type {
   ApplicationView, CartItem, ClientListItem, CreditLimitResult, Factor, Page, Product, Quote, QuoteRequest, ScoringRequest, ScoringResult, StopFactor,
-  VerificationStatus,
+  PartnerOffers, VerificationStatus,
 } from '../api/types';
 import { Avatar, Badge, Btn, Card, CardHead, ErrorBox, Field, Gauge, Icon } from '../components/ui';
 import VerificationPanel from '../components/VerificationPanel';
@@ -117,12 +117,33 @@ export default function NewCreditPage() {
     enabled: !!quoteReq,
   });
 
+  // hamkor provayderlar (Alif / Uzum / TBC): mijoz limiti va tavsiya
+  const [route, setRoute] = useState<string | null>(null); // null — tavsiyaga ko'ra, 'INTERNAL' yoki hamkor kodi
+  const [partnerTx, setPartnerTx] = useState('');
+  const offers = useQuery({
+    queryKey: ['partner-offers', clientId, scoring.data?.risk, cartTotal, downPayment, termMonths, quote.data?.installmentTotal],
+    queryFn: () => api.get<PartnerOffers>(`/api/partners/offers${qs({
+      clientId, risk: scoring.data?.risk, goodsTotal: cartTotal, downPayment: downPayment || 0, term: termMonths,
+      internalAmount: quote.data?.installmentTotal,
+    })}`),
+    enabled: clientId != null && !!scoring.data && !!quote.data,
+  });
+  const chosen = route ?? offers.data?.recommendation.provider ?? 'INTERNAL';
+  const viaPartner = chosen !== 'INTERNAL';
+
   const create = useMutation({
-    mutationFn: () => api.post<ApplicationView>('/api/applications?contractNow=true', {
-      clientId, terms: quoteReq, scoring: scoringReq,
-      guarantorName: guarantorName || undefined, guarantorPhone: guarantorPhone || undefined,
-      branchId: branch.param,
-    }),
+    mutationFn: async () => {
+      const body = {
+        clientId, terms: quoteReq, scoring: scoringReq,
+        guarantorName: guarantorName || undefined, guarantorPhone: guarantorPhone || undefined,
+        branchId: branch.param,
+      };
+      if (!viaPartner) return api.post<ApplicationView>('/api/applications?contractNow=true', body);
+      const a = await api.post<ApplicationView>('/api/applications', body);
+      return a.status === 'APPROVED'
+        ? api.post<ApplicationView>(`/api/applications/${a.id}/handover`, { partnerCode: chosen, transactionId: partnerTx || undefined })
+        : a;
+    },
     onSuccess: (a) => nav(a.status === 'CONTRACTED' && a.contractId ? `/contracts/${a.contractId}` : `/applications?focus=${a.id}`),
   });
 
@@ -137,6 +158,7 @@ export default function NewCreditPage() {
     true,
   ][step];
   const finishKey = decision === 'REJECTED' ? 'finishReject'
+    : viaPartner && decision === 'APPROVED' ? 'finishPartner'
     : decision === 'REVIEW' && !can('CONTRACTS_APPROVE') ? 'finishReview' : 'finish';
 
   return (
@@ -321,6 +343,7 @@ export default function NewCreditPage() {
             )}
             {limit.data && <LimitCard l={limit.data} compact />}
             <QuoteCard quote={quote.data} />
+            {offers.data && <ProviderCard offers={offers.data} chosen={chosen} onChoose={setRoute} />}
           </div>
         </div>
       )}
@@ -339,6 +362,16 @@ export default function NewCreditPage() {
                 <dt>{t('term')}</dt><dd>{quote.data.termMonths} {t('months')}</dd>
               </dl>
             </div>
+            {offers.data && decision !== 'REJECTED' && (
+              <div className="card-pad" style={{ paddingTop: 0 }}>
+                <ProviderCard offers={offers.data} chosen={chosen} onChoose={setRoute} />
+                {viaPartner && (
+                  <Field label={t('partnerTx')} hint={t('partnerTxHint')}>
+                    <input className="input" value={partnerTx} onChange={(e) => setPartnerTx(e.target.value)} maxLength={100} />
+                  </Field>
+                )}
+              </div>
+            )}
             <div className="card-pad col" style={{ gap: 10 }}>
               {decision === 'REJECTED' && <div className="stage-tip st-danger"><Icon name="alert" size={18} /><span>{t('wizRejectedNote')}</span></div>}
               {decision === 'REVIEW' && !can('CONTRACTS_APPROVE') && <div className="stage-tip st-warn"><Icon name="alert" size={18} /><span>{t('wizReviewNote')}</span></div>}
@@ -411,6 +444,38 @@ function QuoteCard({ quote }: { quote?: Quote }) {
             ))}
           </tbody>
         </table>
+      </div>
+    </Card>
+  );
+}
+
+/** Ichki murobaha va hamkor provayderlar (Alif / Uzum / TBC) solishtirmasi. */
+function ProviderCard({ offers, chosen, onChoose }: { offers: PartnerOffers; chosen: string; onChoose: (code: string) => void }) {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
+  const rec = offers.recommendation.provider;
+  return (
+    <Card>
+      <CardHead title={t('providers')} sub={t(`rec_${offers.recommendation.reason}`)} />
+      <div className="card-pad col" style={{ gap: 8 }}>
+        <button className="prov-row" data-on={chosen === 'INTERNAL'} onClick={() => onChoose('INTERNAL')}>
+          <div className="col" style={{ gap: 1, textAlign: 'left', flex: 1 }}>
+            <b style={{ fontSize: 13 }}>{t('providerInternal')} {rec === 'INTERNAL' && <Badge tone="success">{t('recommended')}</Badge>}</b>
+            <span className="faint" style={{ fontSize: 11.5 }}>{t('internalLimit')}: {fmtSom(offers.internal.limit, lang)}</span>
+          </div>
+          {offers.internal.covers ? <Badge tone="success"><Icon name="check" size={13} /></Badge> : <Badge tone="warn">{t('limitShort')}</Badge>}
+        </button>
+        {offers.partners.map((o) => (
+          <button key={o.code} className="prov-row" data-on={chosen === o.code} disabled={!o.eligible} onClick={() => onChoose(o.code)}>
+            <div className="col" style={{ gap: 1, textAlign: 'left', flex: 1 }}>
+              <b style={{ fontSize: 13 }}>{o.name} {rec === o.code && <Badge tone="success">{t('recommended')}</Badge>}</b>
+              <span className="faint" style={{ fontSize: 11.5 }}>
+                {t('limit')}: {fmtSom(o.limit, lang)} · {o.maxTerm} {t('months')} · {t('commission')} {o.commissionPct}% ({fmtSom(o.commission, lang)})
+              </span>
+            </div>
+            {o.eligible ? <Badge tone="success"><Icon name="check" size={13} /></Badge> : <Badge tone="danger">{t(`po_${o.reason}`)}</Badge>}
+          </button>
+        ))}
       </div>
     </Card>
   );

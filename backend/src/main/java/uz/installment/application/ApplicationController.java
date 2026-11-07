@@ -1,6 +1,7 @@
 package uz.installment.application;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -32,6 +33,10 @@ public class ApplicationController {
     public record RejectRequest(@Size(max = 500) String reason) {
     }
 
+    public record HandoverRequest(@NotBlank String partnerCode, @Size(max = 100) String transactionId,
+                                  @Size(max = 500) String notes) {
+    }
+
     public record ApplicationView(Long id, String applicationNo, Long clientId, String clientName, String clientPhone,
                                   String itemsSummary, BigDecimal costPrice, BigDecimal downPayment,
                                   BigDecimal markupPct, BigDecimal salePrice, BigDecimal installmentTotal,
@@ -39,7 +44,8 @@ public class ApplicationController {
                                   String decision, ApplicationStatus status, String rejectionReason,
                                   Long officerId, String officerName, Long branchId, String branchName,
                                   String decidedByName, Instant decidedAt, Long contractId, String contractNo,
-                                  Instant createdAt, Map<String, Object> scoreDetails) {
+                                  Instant createdAt, Map<String, Object> scoreDetails, String provider, String partnerName,
+                                  String partnerTxId, BigDecimal partnerCommission, Instant partnerHandoverAt) {
         static ApplicationView of(Application a) {
             return new ApplicationView(a.getId(), a.getApplicationNo(), a.getClient().getId(),
                     a.getClient().getFullName(), a.getClient().getPhone(), a.getItemsSummary(), a.getCostPrice(),
@@ -54,7 +60,9 @@ public class ApplicationController {
                     a.getDecidedBy() == null ? null : a.getDecidedBy().getFullName(), a.getDecidedAt(),
                     a.getContract() == null ? null : a.getContract().getId(),
                     a.getContract() == null ? null : a.getContract().getContractNo(),
-                    a.getCreatedAt(), a.getScoreDetails());
+                    a.getCreatedAt(), a.getScoreDetails(), a.getProvider(),
+                    a.getPartner() == null ? null : a.getPartner().getName(), a.getPartnerTxId(),
+                    a.getPartnerCommission(), a.getPartnerHandoverAt());
         }
     }
 
@@ -106,6 +114,14 @@ public class ApplicationController {
     public ApplicationView reject(@PathVariable Long id, @Valid @RequestBody(required = false) RejectRequest req,
                                   @AuthenticationPrincipal AuthUser me) {
         return ApplicationView.of(service.reload(service.reject(id, req == null ? null : req.reason(), me).getId()));
+    }
+
+    @PostMapping("/{id}/handover")
+    @PreAuthorize("hasAuthority('CONTRACTS_CREATE')")
+    public ApplicationView handover(@PathVariable Long id, @Valid @RequestBody HandoverRequest req,
+                                    @AuthenticationPrincipal AuthUser me) {
+        return ApplicationView.of(service.reload(
+                service.handover(id, req.partnerCode(), req.transactionId(), req.notes(), me).getId()));
     }
 
     @PostMapping("/{id}/contract")

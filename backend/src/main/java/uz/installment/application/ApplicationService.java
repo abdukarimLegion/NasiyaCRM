@@ -22,6 +22,10 @@ import uz.installment.scoring.ScoringService;
 import uz.installment.security.AuthUser;
 import uz.installment.security.Permission;
 import uz.installment.security.UserRepository;
+import uz.installment.partner.Partner;
+import uz.installment.partner.PartnerLimitCalculator;
+import uz.installment.partner.PartnerRepository;
+import uz.installment.partner.PartnerService;
 import uz.installment.verification.VerificationService;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
@@ -44,6 +48,7 @@ public class ApplicationService {
     private final ContractService contracts;
     private final ObjectMapper json;
     private final VerificationService verification;
+    private final PartnerRepository partners;
     private final NamedParameterJdbcTemplate jdbc;
 
     /**
@@ -150,6 +155,41 @@ public class ApplicationService {
                     "Mijoz holati o'zgargan, shartnoma tuzib bo'lmaydi: " + rejectionText(score));
         }
         convert(a, me, score);
+        return applications.findDetailed(id).orElseThrow();
+    }
+
+    /**
+     * Tasdiqlangan arizani hamkor provayderga topshiradi: shartnoma tuzilmaydi (qarz hamkorda), tovar ombordan
+     * chiqariladi, komissiya yoziladi. Hamkor shartlari (muddat, boshlang'ich to'lov, limit) tekshiriladi.
+     */
+    @Transactional
+    public Application handover(Long id, String partnerCode, String txId, String notes, AuthUser me) {
+        Application a = applications.findForUpdate(id).orElseThrow(() -> new NotFoundException("Ariza", id));
+        if (a.getStatus() != ApplicationStatus.APPROVED) {
+            throw new BusinessException("APPLICATION_STATE", "Hamkorga faqat tasdiqlangan ariza topshiriladi");
+        }
+        Partner p = partners.findByCodeIgnoreCase(partnerCode)
+                .orElseThrow(() -> new NotFoundException("Hamkor", partnerCode));
+        if (!p.isActive()) {
+            throw new BusinessException("PARTNER_INACTIVE", "Hamkor faol emas: " + p.getName());
+        }
+        CreateContractRequest req = json.convertValue(a.getRequest(), CreateContractRequest.class);
+        ContractService.Prepared prep = contracts.prepare(req.terms(), false);
+        var offer = PartnerLimitCalculator.offer(PartnerService.toTerms(p), a.getClient().getMonthlyIncome(),
+                a.getRiskCategory(), prep.quote().costPrice(), prep.quote().costPrice().subtract(prep.quote().downPayment()),
+                prep.quote().downPayment(), prep.quote().termMonths());
+        if (!offer.eligible()) {
+            throw new BusinessException("PARTNER_" + offer.reason(),
+                    p.getName() + " shartlariga mos kelmaydi (" + offer.reason() + ")");
+        }
+        contracts.reserveStock(req.terms());
+        a.setProvider(p.getCode());
+        a.setPartner(p);
+        a.setPartnerTxId(txId);
+        a.setPartnerNotes(notes);
+        a.setPartnerHandoverAt(Instant.now());
+        a.setPartnerCommission(offer.commission());
+        a.setStatus(ApplicationStatus.PARTNER);
         return applications.findDetailed(id).orElseThrow();
     }
 

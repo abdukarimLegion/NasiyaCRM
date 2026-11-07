@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Navigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../api/client';
-import type { AdvancedSettings, DocCode, DocTemplate, Permission, PermissionMatrix, Role, Settings, UserView } from '../api/types';
+import type { AdvancedSettings, DocCode, DocTemplate, Partner, Permission, PermissionMatrix, Role, Settings, UserView } from '../api/types';
 import { Avatar, Badge, Btn, Card, CardHead, Empty, ErrorBox, Field, Icon, Modal } from '../components/ui';
 import { Tabs, type TabItem } from '../components/viz';
 import { useAuth } from '../lib/auth';
@@ -23,6 +23,7 @@ export default function SettingsPage() {
       { key: 'users', to: '/settings/users', label: t('users'), icon: 'clients' as const },
       { key: 'roles', to: '/settings/roles', label: t('rolesPerms'), icon: 'key' as const },
     ] : []),
+    ...(can('SETTINGS_EDIT') ? [{ key: 'partners', to: '/settings/partners', label: t('partners'), icon: 'globe' as const }] : []),
     ...(can('DOCUMENTS_EDIT') ? [{ key: 'documents', to: '/settings/documents', label: t('docTemplates'), icon: 'doc' as const }] : []),
   ];
   const current = tab ?? 'general';
@@ -36,6 +37,7 @@ export default function SettingsPage() {
       {current === 'general' && <><GeneralCard /><AdvancedCard /></>}
       {current === 'users' && <UsersCard />}
       {current === 'roles' && <RolesCard />}
+      {current === 'partners' && <PartnersCard />}
       {current === 'documents' && <DocumentsCard />}
     </div>
   );
@@ -146,6 +148,81 @@ function AdvancedCard() {
         </div>
       </div>
     </Card>
+  );
+}
+
+/* ------------------------------------------------------------------ hamkorlar */
+
+function PartnersCard() {
+  const { t } = useTranslation();
+  const [edit, setEdit] = useState<Partner | 'new' | null>(null);
+  const list = useQuery({ queryKey: ['partners'], queryFn: () => api.get<Partner[]>('/api/partners') });
+  return (
+    <Card>
+      <CardHead title={t('partners')} sub={t('partnersSub')} right={<Btn size="sm" icon="plus" onClick={() => setEdit('new')}>{t('addPartner')}</Btn>} />
+      <ErrorBox error={list.error} />
+      <div className="table-wrap">
+        <table className="tbl">
+          <thead><tr>
+            <th>{t('provider')}</th><th className="num">{t('commissionPct')}</th><th className="num">{t('maxTerm')}</th>
+            <th className="num">{t('minDownPct')}</th><th className="num">{t('dtiPct')}</th><th>{t('status')}</th>
+          </tr></thead>
+          <tbody>
+            {list.data?.map((p) => (
+              <tr key={p.id} onClick={() => setEdit(p)} style={{ opacity: p.active ? 1 : 0.55 }}>
+                <td className="cell-main"><b>{p.name}</b> <span className="mono faint">{p.code}</span></td>
+                <td className="num mono" data-label={t('commissionPct')}>{p.commissionPct}%</td>
+                <td className="num mono" data-label={t('maxTerm')}>{p.maxTerm}</td>
+                <td className="num mono" data-label={t('minDownPct')}>{p.minDownPct}%</td>
+                <td className="num mono" data-label={t('dtiPct')}>{p.dtiPct}%</td>
+                <td data-label={t('status')}>{p.active ? <Badge tone="success" dot>{t('active')}</Badge> : <Badge tone="neutral">{t('inactive')}</Badge>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {edit && <PartnerModal partner={edit === 'new' ? null : edit} onClose={() => setEdit(null)} />}
+    </Card>
+  );
+}
+
+function PartnerModal({ partner, onClose }: { partner: Partner | null; onClose: () => void }) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const [d, setD] = useState<Omit<Partner, 'id'>>(partner ?? {
+    code: '', name: '', commissionPct: 10, maxTerm: 12, minDownPct: 0, dtiPct: 40, active: true,
+  });
+  const save = useMutation({
+    mutationFn: () => (partner ? api.put(`/api/partners/${partner.id}`, d) : api.post('/api/partners', d)),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['partners'] }); onClose(); },
+  });
+  const fe = save.error instanceof ApiError ? save.error.fields ?? {} : {};
+  const num = (k: 'commissionPct' | 'maxTerm' | 'minDownPct' | 'dtiPct', label: string) => (
+    <Field label={label} err={fe[k]}>
+      <input className="input mono" type="number" min={0} value={d[k]} onChange={(e) => setD({ ...d, [k]: Number(e.target.value) })} />
+    </Field>
+  );
+  return (
+    <Modal title={partner ? partner.name : t('addPartner')} onClose={onClose}
+      footer={<><Btn variant="ghost" onClick={onClose}>{t('cancel')}</Btn><Btn icon="check" disabled={save.isPending} onClick={() => save.mutate()}>{t('save')}</Btn></>}>
+      <div className="col" style={{ gap: 14 }}>
+        {save.error && !Object.keys(fe).length && <ErrorBox error={save.error} />}
+        <div className="form-grid">
+          <Field label={t('partnerCode')} err={fe.code}>
+            <input className="input mono" value={d.code} disabled={!!partner} maxLength={20}
+              onChange={(e) => setD({ ...d, code: e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '') })} />
+          </Field>
+          <Field label={t('name')} err={fe.name}>
+            <input className="input" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} />
+          </Field>
+          {num('commissionPct', t('commissionPct'))}
+          {num('maxTerm', t('maxTerm'))}
+          {num('minDownPct', t('minDownPct'))}
+          {num('dtiPct', t('dtiPct'))}
+        </div>
+        <label className="check-row"><input type="checkbox" checked={d.active} onChange={(e) => setD({ ...d, active: e.target.checked })} />{t('active')}</label>
+      </div>
+    </Modal>
   );
 }
 

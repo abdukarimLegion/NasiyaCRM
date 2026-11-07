@@ -312,7 +312,7 @@ export interface ContractItem {
   lineTotal: number;
 }
 
-export type ApplicationStatus = 'PENDING' | 'APPROVED' | 'CONTRACTED' | 'REJECTED';
+export type ApplicationStatus = 'PENDING' | 'APPROVED' | 'CONTRACTED' | 'REJECTED' | 'PARTNER';
 
 export interface ApplicationView {
   id: number;
@@ -343,6 +343,41 @@ export interface ApplicationView {
   contractNo?: string;
   createdAt: string;
   scoreDetails?: { stopFactors?: StopFactor[]; points?: Record<Factor, number> };
+  provider: string;
+  partnerName?: string;
+  partnerTxId?: string;
+  partnerCommission?: number;
+  partnerHandoverAt?: string;
+}
+
+export interface Partner {
+  id: number;
+  code: string;
+  name: string;
+  commissionPct: number;
+  maxTerm: number;
+  minDownPct: number;
+  dtiPct: number;
+  active: boolean;
+}
+
+export interface PartnerOffer {
+  code: string;
+  name: string;
+  limit: number;
+  maxMonthly: number;
+  maxTerm: number;
+  commissionPct: number;
+  minDownPct: number;
+  eligible: boolean;
+  reason: 'OK' | 'TERM' | 'DOWN' | 'LIMIT' | 'RISK';
+  commission: number;
+}
+
+export interface PartnerOffers {
+  internal: { limit: number; freeMonthly: number; covers: boolean };
+  partners: PartnerOffer[];
+  recommendation: { provider?: string; reason: 'INTERNAL_COVERS' | 'PARTNER_LOWEST_COMMISSION' | 'NO_LIMIT' };
 }
 
 export interface PaymentDto {

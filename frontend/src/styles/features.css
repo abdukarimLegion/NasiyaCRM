@@ -231,3 +231,8 @@
 /* ---- KPI tushuntirish ---- */
 .bd-row { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; }
 .bd-pay { padding: 12px 14px; border-radius: 12px; background: var(--bg-2); display: flex; flex-direction: column; gap: 8px; }
+
+/* ---- Provayder tanlash ---- */
+.prov-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); cursor: pointer; font: inherit; color: inherit; }
+.prov-row[data-on="true"] { border-color: var(--primary); background: var(--primary-soft); }
+.prov-row:disabled { opacity: .55; cursor: not-allowed; }
