@@ -48,6 +48,7 @@ public class ApplicationService {
     private final ContractService contracts;
     private final ObjectMapper json;
     private final VerificationService verification;
+    private final uz.installment.mib.MibService mib;
     private final PartnerRepository partners;
     private final NamedParameterJdbcTemplate jdbc;
 
@@ -67,6 +68,8 @@ public class ApplicationService {
         // Savat va shartlar noto'g'ri bo'lsa ariza ochilmaydi (422) — rad etish skoringdan keyin
         ContractService.Prepared prep = contracts.prepare(req.terms(), false);
         MurabahaCalculator.Quote q = prep.quote();
+        // MIB'da qarzdorlik: amaldagi natija bo'lmasa avtomatik tekshiriladi (REQUIRED rejimda natijasiz ariza yuborilmaydi)
+        mib.ensureForApplication(client, officer.id());
         ScoringEngine.Result score = scoring.evaluate(client, req.scoring());
         // Sozlamada talab qilingan bo'lsa, mijoz tasdiqlangan bo'lishi shart (rad etilgan ariza uchun ham tekshiramiz)
         String verifiedBy = verification.requireFor(client.getId());

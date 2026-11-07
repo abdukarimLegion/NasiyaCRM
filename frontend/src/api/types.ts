@@ -8,7 +8,7 @@ export type Decision = 'APPROVED' | 'REVIEW' | 'REJECTED';
 export type Factor = 'INCOME' | 'TENURE' | 'FAMILY' | 'HISTORY' | 'DISCIPLINE' | 'GUARANTOR';
 export type StopFactor =
   | 'BLACKLIST' | 'FRAUD' | 'DUP_PINFL' | 'PASSPORT_EXPIRED'
-  | 'INCOME_NOT_VERIFIED' | 'COURT' | 'OVERDUE' | 'OVERLIMIT' | 'EMPLOYEE_RESTRICTED';
+  | 'INCOME_NOT_VERIFIED' | 'COURT' | 'OVERDUE' | 'OVERLIMIT' | 'EMPLOYEE_RESTRICTED' | 'MIB_DEBT';
 export type PaymentMethod = 'CASH' | 'CARD' | 'PAYME' | 'CLICK' | 'UZUM' | 'BANK_TRANSFER';
 export type Channel = 'SMS' | 'TELEGRAM' | 'BOTH';
 
@@ -758,6 +758,34 @@ export interface AdvancedSettings {
   monthlyOpex: number;
   ownCapital: number;
   fundingCostPct: number;
+  mibMode: MibMode;
+  mibValidityDays: number;
+}
+
+export type MibMode = 'OFF' | 'OPTIONAL' | 'REQUIRED';
+
+export interface MibCheck {
+  id: number;
+  status: 'CLEAR' | 'DEBT' | 'ERROR';
+  source: 'API' | 'MANUAL';
+  totalDebt: number;
+  caseCount: number;
+  cases: Record<string, string | number>[];
+  message?: string;
+  checkedBy?: string;
+  createdAt: string;
+}
+
+export interface MibState {
+  mode: MibMode;
+  validityDays: number;
+  provider: 'none' | 'stub' | 'http';
+  providerConfigured: boolean;
+  latest?: MibCheck;
+  decisive?: MibCheck;
+  fresh: boolean;
+  needsCheck: boolean;
+  history: MibCheck[];
 }
 
 export interface VerificationStatus {

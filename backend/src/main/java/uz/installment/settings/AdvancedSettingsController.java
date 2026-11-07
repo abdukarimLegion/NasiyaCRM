@@ -29,7 +29,9 @@ public class AdvancedSettingsController {
                               @Min(30) @Max(900) int otpExpirySeconds, @Min(50) @Max(100) int minFaceMatchPct,
                               @NotNull @PositiveOrZero BigDecimal monthlyOpex,
                               @NotNull @PositiveOrZero BigDecimal ownCapital,
-                              @NotNull @PositiveOrZero @DecimalMax("100") BigDecimal fundingCostPct) {
+                              @NotNull @PositiveOrZero @DecimalMax("100") BigDecimal fundingCostPct,
+                              @NotNull AdvancedSettingsService.MibMode mibMode,
+                              @Min(1) @Max(90) int mibValidityDays) {
     }
 
     @GetMapping
@@ -41,6 +43,6 @@ public class AdvancedSettingsController {
     @PreAuthorize("hasAuthority('SETTINGS_EDIT')")
     public Advanced save(@Valid @RequestBody AdvancedDto d) {
         return service.save(new Advanced(d.verificationMode(), d.otpExpirySeconds(), d.minFaceMatchPct(),
-                d.monthlyOpex(), d.ownCapital(), d.fundingCostPct()));
+                d.monthlyOpex(), d.ownCapital(), d.fundingCostPct(), d.mibMode(), d.mibValidityDays()));
     }
 }

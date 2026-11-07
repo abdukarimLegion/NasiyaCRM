@@ -31,6 +31,7 @@ public class ScoringService {
             EnumSet.of(StopFactor.BLACKLIST, StopFactor.FRAUD, StopFactor.COURT);
 
     private final ContractRepository contracts;
+    private final uz.installment.mib.MibService mib;
     private final org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate jdbc;
     private final SettingsService settings;
     private final Clock clock;
@@ -69,6 +70,10 @@ public class ScoringService {
                 "p", client.getPinfl() == null ? "" : client.getPinfl()), Integer.class);
         if (restricted != null && restricted > 0) {
             stops.add(StopFactor.EMPLOYEE_RESTRICTED);
+        }
+        // MIB bo'yicha amaldagi tekshiruv natijasi "qarz bor" bo'lsa — stop-faktor
+        if (mib.hasFreshDebt(client.getId())) {
+            stops.add(StopFactor.MIB_DEBT);
         }
         long open = contracts.countByClientIdAndStatusIn(client.getId(),
                 List.of(ContractStatus.ACTIVE, ContractStatus.LATE));

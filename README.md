@@ -148,6 +148,7 @@ Jar yig'ish: `./gradlew bootJar` → `backend/build/libs/installment-platform-0.
 | `branch` | Filiallar: xodim va shartnoma filialga bog'lanadi, filial kesimidagi hisobot va oylik reja |
 | `client` | Mijozlar (JShShIR bo'yicha takrorlanmaydi), kredit tarixi (KATM) yozuvlari |
 | `application` | Nasiya arizalari: PENDING → APPROVED → CONTRACTED / REJECTED / PARTNER; rad etilganlari ham saqlanadi |
+| `mib` | MIB (Majburiy ijro byurosi) qarzdorligini JShShIR bo'yicha tekshirish: adapter (none / stub / http), natija mijozda saqlanadi, skoringda stop-faktor |
 | `verification` | Mijozni tasdiqlash: SMS OTP va biometrik natija (rejim sozlamada) |
 | `partner` | Hamkor provayderlar (Alif / Uzum / TBC): limit kalkulyatori, tavsiya, hamkorga topshirish |
 | `analytics` | Chuqur tahlil: kategoriyalar, muddatlar, aging, filial/menejer reytingi, foyda hisoboti |
@@ -203,6 +204,27 @@ SMS OTP mijoz telefoniga yuboriladi (5 ta urinish, muddat sozlanadi; kod faqat `
 ko'rinadi). Biometrik tekshiruv uchun tashqi tizim (MyID, Face ID) natijasi — moslik foizi va jonlilik —
 xodim tomonidan kiritiladi: bu tizim biometrik provayder bilan **to'g'ridan-to'g'ri integratsiya qilinmagan**.
 Tasdiqlash 30 daqiqa amal qiladi va ariza yuborilganda tekshiriladi.
+
+### MIB qarzdorligini tekshirish
+
+Mijoz JShShIR orqali MIB'dan (Majburiy ijro byurosi) tekshiriladi. **Sozlamalar → Tasdiqlash va moliya** da rejim:
+`OFF` (tekshirilmaydi), `OPTIONAL` (ariza yuborilganda avtomatik tekshiriladi, xizmat ishlamasa davom etadi),
+`REQUIRED` (natijasiz ariza yuborilmaydi). Natija sozlangan muddat (standart 7 kun) amal qiladi, mijoz kartasida
+va nasiya wizard'ida ko'rinadi. MIB'da qarz bor bo'lsa skoringda `MIB_DEBT` stop-faktori ishlaydi va ariza
+sababi bilan rad etilgan holda saqlanadi. Xizmat javob bermasa natija `ERROR` bo'ladi — **hech qachon "qarz yo'q"
+deb talqin qilinmaydi**; tasdiqlash huquqi bor xodim MIB portalidan ko'rib natijani qo'lda kiritadi (jurnalga yoziladi).
+
+Provayder `APP_MIB_PROVIDER` bilan tanlanadi:
+
+| Qiymat | Ma'nosi |
+|---|---|
+| `none` | Standart. Avtomatik tekshiruv yo'q, natija qo'lda kiritiladi. |
+| `stub` | Demo (faqat sinov): JShShIR oxirgi raqami `9` bo'lsa qarz bor. Haqiqiy MIB emas. |
+| `http` | Umumiy HTTP adapter: `APP_MIB_URL` (`{pinfl}` o'rniga JShShIR), `APP_MIB_METHOD` (GET/POST), `APP_MIB_TOKEN`, `APP_MIB_AUTH_HEADER` / `APP_MIB_AUTH_SCHEME`, hamda javobdagi maydonlar yo'li: `APP_MIB_DEBT_FLAG_PATH` (boolean), `APP_MIB_AMOUNT_PATH` (summa), `APP_MIB_CASES_PATH` (ijro ishlari massivi), nuqtali yo'l bilan (masalan `data.totalDebt`). 404 — ijro ishi yo'q (`APP_MIB_NOT_FOUND_CLEAR`). |
+
+> **Muhim:** haqiqiy MIB xizmatining manzili, kirish usuli (token/shartnoma) va javob formati menga noma'lum, shuning
+> uchun `http` adapter umumiy yozilgan va sozlamalar bilan moslanadi. MIB bilan rasmiy ulanish va mijozdan
+> shaxsiy ma'lumotlarni tekshirishga rozilik olish (ma'lumotlarni himoya qilish qoidalari) alohida hal qilinadi.
 
 ### Hamkor provayderlar
 
@@ -264,7 +286,7 @@ Docker bilan deploy va zaxira nusxa.
 
 **Keyingi bosqich:**
 1. Payme va Click merchant API (webhook, `external_id` bo'yicha idempotentlik tayyor).
-2. KATM va MIB bilan avtomatik integratsiya (hozir kredit tarixi qo'lda kiritiladi); MyID/biometrik provayder va Alif/Uzum/TBC API'lari bilan ulanish.
+2. MIB'ning haqiqiy API'siga ulanish (adapter tayyor, `APP_MIB_*` sozlanadi) va KATM bilan avtomatik integratsiya (hozir kredit tarixi qo'lda kiritiladi); MyID/biometrik provayder va Alif/Uzum/TBC API'lari bilan ulanish.
 3. E-IMZO bilan shartnomani elektron imzolash (PDF tayyor).
 4. Telegram bot: mijoz `/start` bosib, `telegram_chat_id` ni ulaydi.
 5. Hisobotlar: Excel eksport.

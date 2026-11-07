@@ -12,7 +12,8 @@ public record AppProperties(
         BootstrapAdmin bootstrapAdmin,
         Sms sms,
         Telegram telegram,
-        Jobs jobs) {
+        Jobs jobs,
+        Mib mib) {
 
     public record Jwt(String secret, int ttlHours) {
     }
@@ -30,5 +31,16 @@ public record AppProperties(
     }
 
     public record Jobs(String dailyCron) {
+    }
+
+    /**
+     * MIB (Majburiy ijro byurosi) integratsiyasi. provider: none (sozlanmagan — faqat qo'lda kiritish),
+     * stub (demo: JShShIR oxirgi raqami 9 bo'lsa qarz bor) yoki http (umumiy HTTP adapter).
+     * http uchun: url ({pinfl} o'rniga JShShIR qo'yiladi), method (GET/POST; POST tanasi {"pinfl":"..."}),
+     * token va authHeader/authScheme, hamda javobdagi maydonlar yo'li (nuqtali, masalan "data.totalDebt").
+     */
+    public record Mib(String provider, String url, String method, String token, String authHeader,
+                      String authScheme, Integer timeoutSeconds, String debtFlagPath, String amountPath,
+                      String casesPath, String messagePath, Boolean notFoundMeansClear) {
     }
 }
