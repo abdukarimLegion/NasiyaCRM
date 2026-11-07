@@ -38,6 +38,8 @@ public enum Permission {
     KPI_VIEW_ALL("analytics"),
     KPI_MANAGE("analytics"),
     FORECAST_VIEW("analytics"),
+    /** Chuqur portfel tahlili: kategoriyalar, muddatlar, aging, reytinglar, foyda */
+    ANALYTICS_VIEW("analytics"),
 
     BRANCHES_VIEW("branches"),
     BRANCHES_MANAGE("branches"),

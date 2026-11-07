@@ -104,4 +104,46 @@ class ForecastCalculatorTest {
         assertThat(s[11]).isGreaterThan(s[0]);
         assertThat(Arrays.stream(s).average().orElse(0)).isCloseTo(1.0, within(0.02));
     }
+
+    private static Inputs flat() {
+        return new Inputs(YearMonth.of(2026, 1), 3, list(1000, 1000, 1000), list(200, 200, 200),
+                BigDecimal.valueOf(500), BigDecimal.valueOf(5000), new BigDecimal("0.9"), new BigDecimal("0.5"),
+                BigDecimal.valueOf(1000), BigDecimal.valueOf(20), 4, FLAT_ONES);
+    }
+
+    private static final double[] FLAT_ONES = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+
+    @Test
+    void stressReducesInflowAndProfit() {
+        var low = ForecastCalculator.totals(ForecastCalculator.project(flat(), base()));
+        var high = ForecastCalculator.totals(ForecastCalculator.project(flat(),
+                base().withStress(ForecastCalculator.Stress.HIGH)));
+        assertThat(high.inflow()).isLessThan(low.inflow());
+        assertThat(high.profit()).isLessThan(low.profit());
+        assertThat(high.arrearsEnd()).isGreaterThan(low.arrearsEnd());
+    }
+
+    @Test
+    void partnerShareMovesSalesToPartnersAndAddsMargin() {
+        var sc = new Scenario(BigDecimal.ZERO, BigDecimal.ZERO, true, null, null, 1.0,
+                ForecastCalculator.Stress.LOW, BigDecimal.valueOf(40), BigDecimal.valueOf(15));
+        var own = ForecastCalculator.totals(ForecastCalculator.project(flat(), base()));
+        var withPartner = ForecastCalculator.totals(ForecastCalculator.project(flat(), sc));
+        // yangi savdoning 40% hamkorga o'tadi: o'z savdosi 60%, hamkor hajmi 40%
+        assertThat(withPartner.newSales().doubleValue()).isCloseTo(own.newSales().doubleValue() * 0.6, within(3.0));
+        assertThat(withPartner.partnerVolume().doubleValue()).isCloseTo(own.newSales().doubleValue() * 0.4, within(3.0));
+        // hamkor marjasi 15%: hajm × 0.15
+        assertThat(withPartner.partnerProfit().doubleValue())
+                .isCloseTo(withPartner.partnerVolume().doubleValue() * 0.15, within(3.0));
+        assertThat(own.partnerVolume()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    void markupOverrideRaisesProfit() {
+        var def = ForecastCalculator.totals(ForecastCalculator.project(flat(), base()));
+        var higher = ForecastCalculator.totals(ForecastCalculator.project(flat(),
+                new Scenario(BigDecimal.ZERO, BigDecimal.ZERO, true, BigDecimal.valueOf(40), null, 1.0,
+                        ForecastCalculator.Stress.LOW, BigDecimal.ZERO, BigDecimal.valueOf(15))));
+        assertThat(higher.profit()).isGreaterThan(def.profit());
+    }
 }

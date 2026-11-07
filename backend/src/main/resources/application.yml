@@ -70,6 +70,8 @@ spring:
       on-profile: dev
   flyway:
     locations: classpath:db/migration,classpath:db/demo
+    # demo migratsiyalari (V100+) allaqachon qo'llangan bazada yangi V6, V7... ham ishlashi uchun
+    out-of-order: true
   jpa:
     show-sql: false
 app:

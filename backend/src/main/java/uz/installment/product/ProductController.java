@@ -51,16 +51,17 @@ public class ProductController {
             @Min(1) @Max(60) int termMin,
             @Min(1) @Max(60) int termMax,
             @PositiveOrZero int stock,
-            boolean active) {
+            boolean active,
+            Long supplierId) {
     }
 
     public record ProductResponse(Long id, Long categoryId, String categoryCode, String name, String sku,
                                   BigDecimal price, BigDecimal markupPct, int termMin, int termMax, int stock,
-                                  boolean active) {
+                                  boolean active, Long supplierId) {
         static ProductResponse of(Product p) {
             return new ProductResponse(p.getId(), p.getCategory().getId(), p.getCategory().getCode(), p.getName(),
                     p.getSku(), p.getPrice(), p.getMarkupPct(), p.getTermMin(), p.getTermMax(), p.getStock(),
-                    p.isActive());
+                    p.isActive(), p.getSupplierId());
         }
     }
 
@@ -110,5 +111,6 @@ public class ProductController {
         p.setTermMax(r.termMax());
         p.setStock(r.stock());
         p.setActive(r.active());
+        p.setSupplierId(r.supplierId());
     }
 }

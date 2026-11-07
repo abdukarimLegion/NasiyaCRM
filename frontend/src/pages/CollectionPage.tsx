@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { api, openPdf, qs } from '../api/client';
+import { api, downloadFile, openPdf, qs } from '../api/client';
 import type {
   ActionType, CollectionActionDto, CollectionStage, LegalCaseRow, LegalStatus, OverdueRow, UserBrief,
 } from '../api/types';
@@ -368,6 +368,14 @@ function LegalView({ rows }: { rows: OverdueRow[] }) {
       setDocErr(e);
     }
   };
+  const legalPackage = async (contractId: number) => {
+    setDocErr(null);
+    try {
+      await downloadFile('POST', `/api/documents/contracts/${contractId}/legal-package?lang=${lang === 'ru' ? 'ru' : 'uz'}`, `legal-package-${contractId}.zip`);
+    } catch (e) {
+      setDocErr(e);
+    }
+  };
   const list = cases.data ?? [];
   const candidates = rows.filter((r) => !r.legalCaseId);
   const openList = list.filter((c) => c.status !== 'CLOSED');
@@ -438,6 +446,7 @@ function LegalView({ rows }: { rows: OverdueRow[] }) {
                     {can('COLLECTION_LEGAL') && (
                       <div className="row" style={{ gap: 4 }}>
                         <button className="act-btn" title={t('docClaim')} onClick={() => void claim(c.contractId)}><Icon name="printer" size={15} /></button>
+                        <button className="act-btn" title={t('legalPackage')} onClick={() => void legalPackage(c.contractId)}><Icon name="download" size={15} /></button>
                         <button className="act-btn" title={t('edit')} onClick={() => setEdit(c)}><Icon name="pen" size={15} /></button>
                       </div>
                     )}

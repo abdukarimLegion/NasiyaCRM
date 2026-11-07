@@ -10,7 +10,7 @@ import { useAuth } from '../lib/auth';
 import { useBranch } from '../lib/branch';
 import { currentMonth, fmtMln, fmtMonth, fmtNum, fmtSom } from '../lib/format';
 
-const METRICS: KpiMetric[] = ['CONTRACTS', 'SALES', 'COLLECTED', 'RECOVERED', 'ACTIONS', 'QUALITY'];
+const METRICS: KpiMetric[] = ['APPLICATIONS', 'CONTRACTS', 'SALES', 'COLLECTED', 'RECOVERED', 'ACTIONS', 'QUALITY'];
 const MONEY: KpiMetric[] = ['SALES', 'COLLECTED', 'RECOVERED'];
 
 function metricValue(m: KpiMetric, v: number | undefined, lang: string): string {
@@ -72,8 +72,8 @@ export default function KpiPage() {
                 </div>
               </div>
             </div>
-            <Stat icon="award" tone="gold" label={t('kpiBonusFund')} value={fmtMln(s.totalBonus, lang)}
-              sub={<>{t('kpiOperators')}: <b>{s.operators}</b></>} />
+            <Stat icon="award" tone="gold" label={t('kpiPayroll')} value={fmtMln(s.totalPayroll, lang)}
+              sub={<>{t('kpiBonusFund')}: <b>{fmtMln(s.totalBonus, lang)}</b> · {t('kpiOperators')}: <b>{s.operators}</b></>} />
             <Stat icon="newcredit" tone="success" label={t('kpiSalesTotal')} value={fmtMln(s.totalSales, lang)}
               sub={fmtMonth(s.month, lang)} />
             <Stat icon="collection" tone="info" label={t('kpiRecoveredTotal')} value={fmtMln(s.totalRecovered, lang)}
@@ -110,6 +110,7 @@ export default function KpiPage() {
                   {METRICS.map((m) => <th key={m} className="num">{t(`km_${m}`)}</th>)}
                   <th className="num">{t('kpiScore')}</th>
                   <th className="num">{t('kpiBonus')}</th>
+                  <th className="num">{t('kpiTotalPayout')}</th>
                 </tr></thead>
                 <tbody>
                   {rows.map((o) => (
@@ -142,6 +143,7 @@ export default function KpiPage() {
                           : <span className="faint">{t('kpiNoTarget')}</span>}
                       </td>
                       <td className="num mono" data-label={t('kpiBonus')}>{o.bonusPayout > 0 ? fmtMln(o.bonusPayout, lang) : '—'}</td>
+                      <td className="num mono" data-label={t('kpiTotalPayout')}>{o.totalPayout > 0 ? <b>{fmtMln(o.totalPayout, lang)}</b> : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -257,7 +259,7 @@ function DetailModal({ o, config, onClose }: { o: OperatorKpi; config: KpiConfig
           </div>
         </div>
 
-        <MetricBars o={o} lang={lang} />
+        <Breakdown o={o} config={config} lang={lang} />
 
         <div className="col" style={{ gap: 8 }}>
           <b style={{ fontSize: 13 }}>{t('kpiHistory')}</b>
@@ -278,12 +280,15 @@ function DetailModal({ o, config, onClose }: { o: OperatorKpi; config: KpiConfig
             <div className="divider" />
             <b style={{ fontSize: 13 }}>{t('kpiTargets')}</b>
             <div className="form-grid">
+              {num('applicationsCount', t('km_APPLICATIONS'))}
               {num('contractsCount', t('km_CONTRACTS'))}
               {num('salesVolume', t('km_SALES'), t('somHint'))}
               {num('collectedAmount', t('km_COLLECTED'), t('somHint'))}
               {num('recoveredAmount', t('km_RECOVERED'), t('somHint'))}
               {num('actionsCount', t('km_ACTIONS'))}
               {num('bonusAmount', t('kpiBonusBase'), t('kpiBonusHint', { min: config.minScoreForBonus, cap: config.bonusCapPct }))}
+              {num('baseSalary', t('kpiBaseSalary'), t('somHint'))}
+              {num('salesBonusPct', t('kpiSalesBonusPct'), t('kpiSalesBonusHint'))}
             </div>
             <ErrorBox error={save.error} />
           </>
@@ -346,5 +351,66 @@ function ConfigModal({ config, onClose }: { config: KpiConfig; onClose: () => vo
         <ErrorBox error={save.error} />
       </div>
     </Modal>
+  );
+}
+
+const STATUS_TONE = { EXCELLENT: 'success', GOOD: 'info', WARNING: 'warn', DANGER: 'danger' } as const;
+function statusOf(pct: number): keyof typeof STATUS_TONE {
+  return pct >= 100 ? 'EXCELLENT' : pct >= 80 ? 'GOOD' : pct >= 60 ? 'WARNING' : 'DANGER';
+}
+
+/** Har bir mezon yakuniy ballga qancha ball qo'shganini va jami to'lov tarkibini ko'rsatadi. */
+function Breakdown({ o, config, lang }: { o: OperatorKpi; config: KpiConfig; lang: string }) {
+  const { t } = useTranslation();
+  const included = o.metrics.filter((m) => m.included);
+  const weightSum = included.reduce((a, m) => a + m.weight, 0);
+  if (included.length === 0) {
+    return <span className="faint">{t('kpiNoTargetHint')}</span>;
+  }
+  return (
+    <div className="col" style={{ gap: 14 }}>
+      <div className="col" style={{ gap: 4 }}>
+        <b style={{ fontSize: 13 }}>{t('kpiBreakdown')}</b>
+        <span className="faint" style={{ fontSize: 11.5 }}>{t('kpiBreakdownHint', { n: weightSum })}</span>
+      </div>
+      <div className="col" style={{ gap: 10 }}>
+        {included.map((m) => {
+          const ach = m.achievementPct ?? 0;
+          const points = weightSum > 0 ? (ach * m.weight) / weightSum : 0;
+          const st = statusOf(ach);
+          return (
+            <div key={m.metric} className="bd-row">
+              <div className="row between" style={{ gap: 8, flexWrap: 'wrap' }}>
+                <div className="col" style={{ gap: 1 }}>
+                  <b style={{ fontSize: 13 }}>{t(`km_${m.metric}`)}</b>
+                  <span className="faint" style={{ fontSize: 11.5 }}>{t(`kmh_${m.metric}`)}</span>
+                </div>
+                <Badge tone={STATUS_TONE[st]}>{t(`kst_${st}`)}</Badge>
+              </div>
+              <div className="row between mono" style={{ fontSize: 12, flexWrap: 'wrap', gap: 6 }}>
+                <span>{metricValue(m.metric, m.actual, lang)}{m.metric !== 'QUALITY' && <span className="faint"> / {metricValue(m.metric, m.target, lang)}</span>}</span>
+                <span className="faint">{Math.round(ach)}% × {t('weight')} {m.weight}/{weightSum}</span>
+                <b>+{points.toFixed(1)} {t('kpiPoints')}</b>
+              </div>
+              <Progress pct={ach} height={5} />
+            </div>
+          );
+        })}
+      </div>
+      {o.applications > 0 && (
+        <span className="faint" style={{ fontSize: 12 }}>
+          {t('kpiConversion')}: <b>{o.conversionPct != null ? `${o.conversionPct}%` : '—'}</b>
+        </span>
+      )}
+      <div className="bd-pay">
+        <b style={{ fontSize: 13 }}>{t('kpiPayoutTitle')}</b>
+        <dl className="kv">
+          <dt>{t('kpiBaseSalary')}</dt><dd className="mono">{fmtSom(o.baseSalary, lang)}</dd>
+          <dt>{t('kpiSalesBonus')} ({o.targets.salesBonusPct}%)</dt><dd className="mono">{fmtSom(o.salesBonus, lang)}</dd>
+          <dt>{t('kpiPerfBonus')}{o.score != null ? ` (${Math.min(o.score, config.bonusCapPct).toFixed(0)}%)` : ''}</dt><dd className="mono">{fmtSom(o.bonusPayout, lang)}</dd>
+          <dt><b>{t('kpiTotalPayout')}</b></dt><dd className="mono"><b>{fmtSom(o.totalPayout, lang)}</b></dd>
+        </dl>
+      </div>
+    </div>
   );
 }

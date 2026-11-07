@@ -40,22 +40,30 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class KpiService {
 
+    /**
+     * Reja va maosh sozlamalari. bonusAmount — KPI bonus fondi; baseSalary — oklad;
+     * salesBonusPct — moliyalashtirilgan savdo summasidan foiz.
+     */
     public record Targets(int contractsCount, BigDecimal salesVolume, BigDecimal collectedAmount,
-                         BigDecimal recoveredAmount, int actionsCount, BigDecimal bonusAmount) {
+                         BigDecimal recoveredAmount, int actionsCount, BigDecimal bonusAmount,
+                         int applicationsCount, BigDecimal baseSalary, BigDecimal salesBonusPct) {
         static Targets empty() {
-            return new Targets(0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 0, BigDecimal.ZERO);
+            return new Targets(0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 0, BigDecimal.ZERO,
+                    0, BigDecimal.ZERO, BigDecimal.ZERO);
         }
     }
 
     public record OperatorKpi(Long userId, String fullName, Role role, Long branchId, String branchName,
                               Targets targets, List<KpiCalculator.MetricResult> metrics, BigDecimal score,
                               KpiCalculator.Grade grade, BigDecimal bonusPayout, long openContracts,
-                              long lateContracts, long promisesMade, long promisesKept, int rank) {
+                              long lateContracts, long promisesMade, long promisesKept, int rank,
+                              long applications, BigDecimal conversionPct, BigDecimal baseSalary,
+                              BigDecimal salesBonus, BigDecimal totalPayout) {
     }
 
     public record Summary(String month, int operators, BigDecimal avgScore, BigDecimal totalBonus,
                           Map<KpiCalculator.Grade, Integer> grades, BigDecimal totalSales, BigDecimal totalCollected,
-                          BigDecimal totalRecovered) {
+                          BigDecimal totalRecovered, BigDecimal totalPayroll) {
     }
 
     public record Report(Summary summary, KpiCalculator.Config config, List<OperatorKpi> operators) {
@@ -80,7 +88,8 @@ public class KpiService {
             OperatorKpi o = rows.get(i);
             ranked.add(new OperatorKpi(o.userId(), o.fullName(), o.role(), o.branchId(), o.branchName(), o.targets(),
                     o.metrics(), o.score(), o.grade(), o.bonusPayout(), o.openContracts(), o.lateContracts(),
-                    o.promisesMade(), o.promisesKept(), o.score() == null ? 0 : i + 1));
+                    o.promisesMade(), o.promisesKept(), o.score() == null ? 0 : i + 1,
+                    o.applications(), o.conversionPct(), o.baseSalary(), o.salesBonus(), o.totalPayout()));
         }
         return new Report(summary(m, ranked), cfg, ranked);
     }
@@ -141,15 +150,20 @@ public class KpiService {
         var p = new MapSqlParameterSource().addValue("t", TenantContext.currentTenantId()).addValue("u", userId)
                 .addValue("cc", t.contractsCount()).addValue("sv", nz(t.salesVolume()))
                 .addValue("ca", nz(t.collectedAmount())).addValue("ra", nz(t.recoveredAmount()))
-                .addValue("ac", t.actionsCount()).addValue("ba", nz(t.bonusAmount()));
+                .addValue("ac", t.actionsCount()).addValue("ba", nz(t.bonusAmount()))
+                .addValue("ap", t.applicationsCount()).addValue("bs", nz(t.baseSalary()))
+                .addValue("sb", nz(t.salesBonusPct()));
         jdbc.update("""
                 insert into kpi_targets (tenant_id, user_id, contracts_count, sales_volume, collected_amount,
-                                         recovered_amount, actions_count, bonus_amount, updated_at)
-                values (:t, :u, :cc, :sv, :ca, :ra, :ac, :ba, now())
+                                         recovered_amount, actions_count, bonus_amount, applications_count,
+                                         base_salary, sales_bonus_pct, updated_at)
+                values (:t, :u, :cc, :sv, :ca, :ra, :ac, :ba, :ap, :bs, :sb, now())
                 on conflict (tenant_id, user_id) do update set
                   contracts_count = excluded.contracts_count, sales_volume = excluded.sales_volume,
                   collected_amount = excluded.collected_amount, recovered_amount = excluded.recovered_amount,
-                  actions_count = excluded.actions_count, bonus_amount = excluded.bonus_amount, updated_at = now()
+                  actions_count = excluded.actions_count, bonus_amount = excluded.bonus_amount,
+                  applications_count = excluded.applications_count, base_salary = excluded.base_salary,
+                  sales_bonus_pct = excluded.sales_bonus_pct, updated_at = now()
                 """, p);
     }
 
@@ -169,6 +183,14 @@ public class KpiService {
                   where active
                     and (cast(:branch as bigint) is null or branch_id = :branch)
                     and (cast(:onlyUser as bigint) is null or id = :onlyUser)
+                ),
+                apps as (
+                  select officer_id as uid, count(*) as cnt from (
+                    select officer_id from applications where created_at >= :f and created_at < :to
+                    union all
+                    select officer_id from contracts
+                    where application_id is null and status <> 'CANCELLED' and created_at >= :f and created_at < :to
+                  ) x group by officer_id
                 ),
                 sales as (
                   select officer_id as uid, count(*) as cnt, sum(cost_price - down_payment) as vol
@@ -223,8 +245,8 @@ public class KpiService {
                 )
                 select u.id, u.full_name, u.role, u.branch_id, b.name as branch_name,
                        t.contracts_count, t.sales_volume, t.collected_amount, t.recovered_amount,
-                       t.actions_count, t.bonus_amount,
-                       coalesce(sales.cnt, 0) as a_contracts, coalesce(sales.vol, 0) as a_sales,
+                       t.actions_count, t.bonus_amount, t.applications_count, t.base_salary, t.sales_bonus_pct,
+                       coalesce(apps.cnt, 0) as a_apps, coalesce(sales.cnt, 0) as a_contracts, coalesce(sales.vol, 0) as a_sales,
                        coalesce(coll.amt, 0) as a_collected, coalesce(rec.amt, 0) as a_recovered,
                        coalesce(act.cnt, 0) as a_actions,
                        qual.rem, qual.od, coalesce(qual.open_cnt, 0) as open_cnt, coalesce(qual.late_cnt, 0) as late_cnt,
@@ -232,6 +254,7 @@ public class KpiService {
                 from u
                 left join branches b on b.id = u.branch_id
                 left join kpi_targets t on t.user_id = u.id
+                left join apps on apps.uid = u.id
                 left join sales on sales.uid = u.id
                 left join coll on coll.uid = u.id
                 left join act on act.uid = u.id
@@ -242,14 +265,18 @@ public class KpiService {
             Targets t = rs.getObject("contracts_count") == null ? Targets.empty()
                     : new Targets(rs.getInt("contracts_count"), rs.getBigDecimal("sales_volume"),
                     rs.getBigDecimal("collected_amount"), rs.getBigDecimal("recovered_amount"),
-                    rs.getInt("actions_count"), rs.getBigDecimal("bonus_amount"));
+                    rs.getInt("actions_count"), rs.getBigDecimal("bonus_amount"),
+                    rs.getInt("applications_count"), rs.getBigDecimal("base_salary"),
+                    rs.getBigDecimal("sales_bonus_pct"));
             Map<Metric, BigDecimal> actual = new EnumMap<>(Metric.class);
+            actual.put(Metric.APPLICATIONS, rs.getBigDecimal("a_apps"));
             actual.put(Metric.CONTRACTS, rs.getBigDecimal("a_contracts"));
             actual.put(Metric.SALES, rs.getBigDecimal("a_sales"));
             actual.put(Metric.COLLECTED, rs.getBigDecimal("a_collected"));
             actual.put(Metric.RECOVERED, rs.getBigDecimal("a_recovered"));
             actual.put(Metric.ACTIONS, rs.getBigDecimal("a_actions"));
             Map<Metric, BigDecimal> target = new EnumMap<>(Metric.class);
+            target.put(Metric.APPLICATIONS, BigDecimal.valueOf(t.applicationsCount()));
             target.put(Metric.CONTRACTS, BigDecimal.valueOf(t.contractsCount()));
             target.put(Metric.SALES, t.salesVolume());
             target.put(Metric.COLLECTED, t.collectedAmount());
@@ -257,10 +284,16 @@ public class KpiService {
             target.put(Metric.ACTIONS, BigDecimal.valueOf(t.actionsCount()));
             BigDecimal quality = KpiCalculator.quality(rs.getBigDecimal("rem"), rs.getBigDecimal("od"));
             KpiCalculator.Result r = KpiCalculator.calculate(actual, target, quality, t.bonusAmount(), cfg);
+            long apps = rs.getLong("a_apps");
+            BigDecimal conv = apps > 0 ? BigDecimal.valueOf(rs.getLong("a_contracts") * 100.0 / apps)
+                    .setScale(1, RoundingMode.HALF_UP) : null;
+            BigDecimal salesBonus = actual.get(Metric.SALES).multiply(nz(t.salesBonusPct()))
+                    .divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
+            BigDecimal payout = nz(t.baseSalary()).add(salesBonus).add(r.bonusPayout());
             return new OperatorKpi(rs.getLong("id"), rs.getString("full_name"), Role.valueOf(rs.getString("role")),
                     rs.getObject("branch_id", Long.class), rs.getString("branch_name"), t, r.metrics(), r.score(),
                     r.grade(), r.bonusPayout(), rs.getLong("open_cnt"), rs.getLong("late_cnt"),
-                    rs.getLong("made"), rs.getLong("kept"), 0);
+                    rs.getLong("made"), rs.getLong("kept"), 0, apps, conv, nz(t.baseSalary()), salesBonus, payout);
         }).stream()
                 // Administrator faqat faoliyati yoki rejasi bo'lsa ko'rinadi
                 .filter(o -> o.role() != Role.ADMIN || o.score() != null || hasActivity(o))
@@ -284,7 +317,8 @@ public class KpiService {
         scored.forEach(o -> grades.merge(o.grade(), 1, Integer::sum));
         return new Summary(m.toString(), rows.size(), avg,
                 rows.stream().map(OperatorKpi::bonusPayout).reduce(BigDecimal.ZERO, BigDecimal::add), grades,
-                sum(rows, Metric.SALES), sum(rows, Metric.COLLECTED), sum(rows, Metric.RECOVERED));
+                sum(rows, Metric.SALES), sum(rows, Metric.COLLECTED), sum(rows, Metric.RECOVERED),
+                rows.stream().map(OperatorKpi::totalPayout).reduce(BigDecimal.ZERO, BigDecimal::add));
     }
 
     private static BigDecimal sum(List<OperatorKpi> rows, Metric m) {

@@ -35,10 +35,23 @@ public class ForecastController {
                                         @RequestParam(defaultValue = "0") BigDecimal collectionAdj,
                                         @RequestParam(defaultValue = "true") boolean newSales,
                                         @RequestParam(required = false) Long branchId,
+                                        @RequestParam(required = false) BigDecimal markup,
+                                        @RequestParam(required = false) Double downPct,
+                                        @RequestParam(required = false) Integer term,
+                                        @RequestParam(defaultValue = "LOW") ForecastCalculator.Stress stress,
+                                        @RequestParam(required = false) BigDecimal fundingCost,
+                                        @RequestParam(defaultValue = "0") BigDecimal partnerShare,
+                                        @RequestParam(defaultValue = "15") BigDecimal partnerMargin,
                                         @AuthenticationPrincipal AuthUser me) {
         BigDecimal g = growth.max(BigDecimal.valueOf(-50)).min(BigDecimal.valueOf(100));
         BigDecimal c = collectionAdj.max(BigDecimal.valueOf(-30)).min(BigDecimal.valueOf(20));
-        return service.forecast(horizon, new ForecastCalculator.Scenario(g, c, newSales), me.branchScope(branchId));
+        BigDecimal mk = markup == null ? null : markup.max(BigDecimal.ZERO).min(BigDecimal.valueOf(100));
+        Integer tm = term == null ? null : Math.max(1, Math.min(60, term));
+        BigDecimal share = partnerShare.max(BigDecimal.ZERO).min(BigDecimal.valueOf(85));
+        BigDecimal margin = partnerMargin.max(BigDecimal.ZERO).min(BigDecimal.valueOf(100));
+        BigDecimal fc = fundingCost == null ? null : fundingCost.max(BigDecimal.ZERO).min(BigDecimal.valueOf(100));
+        var sc = new ForecastCalculator.Scenario(g, c, newSales, mk, tm, 1.0, stress, share, margin);
+        return service.forecast(horizon, sc, me.branchScope(branchId), downPct, fc);
     }
 
     @PutMapping("/seasonality")

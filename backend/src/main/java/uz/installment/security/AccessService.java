@@ -59,10 +59,25 @@ public class AccessService {
 
     /** Foydalanuvchi uchun: shaxsiy ruxsatlar bo'lsa — o'sha, aks holda rolniki. */
     public Set<Permission> effective(Role role, List<String> custom) {
-        if (role.isAdmin() || custom == null) {
+        return effective(role, custom, null);
+    }
+
+    /** Ustuvorlik: administrator → xodimning shaxsiy ruxsatlari → shaxsiy rol to'plami → tizim roli. */
+    public Set<Permission> effective(Role role, List<String> custom, Long customRoleId) {
+        if (role.isAdmin()) {
             return roleEffective(role);
         }
-        return parse(custom);
+        if (custom != null) {
+            return parse(custom);
+        }
+        if (customRoleId != null) {
+            List<String> perms = jdbc.query("select permissions::text from custom_roles where id = :id",
+                    Map.of("id", customRoleId), (rs, i) -> rs.getString(1)).stream().findFirst().map(this::fromJson).orElse(null);
+            if (perms != null) {
+                return parse(perms);
+            }
+        }
+        return roleEffective(role);
     }
 
     public Map<Role, Set<Permission>> allRoles() {
@@ -132,14 +147,15 @@ public class AccessService {
 
     private Access fetch(Long userId) {
         List<Access> rows = jdbc.query("""
-                select id, username, role, active, branch_id, permissions::text as permissions
+                select id, username, role, active, branch_id, permissions::text as permissions, custom_role_id
                 from users where id = :id
                 """, Map.of("id", userId), (rs, i) -> {
             Role role = Role.valueOf(rs.getString("role"));
             String perms = rs.getString("permissions");
             List<String> custom = perms == null ? null : fromJson(perms);
             return new Access(rs.getLong("id"), rs.getString("username"), role, rs.getBoolean("active"),
-                    (Long) rs.getObject("branch_id", Long.class), effective(role, custom));
+                    (Long) rs.getObject("branch_id", Long.class),
+                    effective(role, custom, rs.getObject("custom_role_id", Long.class)));
         });
         return rows.isEmpty() ? null : rows.get(0);
     }

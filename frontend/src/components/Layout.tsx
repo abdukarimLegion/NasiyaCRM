@@ -19,9 +19,11 @@ export const NAV: { group: string; items: NavItem[] }[] = [
   ] },
   { group: 'nav_front', items: [
     { to: '/new-credit', key: 'newCredit', icon: 'newcredit', perms: ['CONTRACTS_CREATE'] },
+    { to: '/applications', key: 'applications', icon: 'doc', perms: ['CONTRACTS_VIEW'] },
     { to: '/clients', key: 'clients', icon: 'clients', perms: ['CLIENTS_VIEW'] },
     { to: '/payments', key: 'cashierNav', icon: 'payments', perms: ['PAYMENTS_VIEW'] },
     { to: '/products', key: 'products', icon: 'briefcase', perms: ['PRODUCTS_VIEW'] },
+    { to: '/warehouse', key: 'warehouseNav', icon: 'box', perms: ['PRODUCTS_VIEW'] },
     { to: '/contracts', key: 'contracts', icon: 'contracts', perms: ['CONTRACTS_VIEW'] },
   ] },
   { group: 'nav_collection', items: [
@@ -30,6 +32,7 @@ export const NAV: { group: string; items: NavItem[] }[] = [
   ] },
   { group: 'nav_analytics', items: [
     { to: '/kpi', key: 'kpiNav', icon: 'target' },
+    { to: '/analytics', key: 'analyticsNav', icon: 'analytics', perms: ['ANALYTICS_VIEW'] },
     { to: '/forecast', key: 'forecastNav', icon: 'trend', perms: ['FORECAST_VIEW'] },
   ] },
   { group: 'nav_system', items: [
@@ -38,9 +41,12 @@ export const NAV: { group: string; items: NavItem[] }[] = [
   ] },
 ];
 
-const THEMES = ['light-emerald', 'light-blue', 'dark-slate'] as const;
+const THEMES = ['light-emerald', 'light-blue', 'light-violet', 'light-amber', 'light-rose', 'light-teal', 'dark-slate'] as const;
 type Theme = (typeof THEMES)[number];
-const THEME_SWATCH: Record<Theme, string> = { 'light-emerald': '#059669', 'light-blue': '#2563eb', 'dark-slate': '#0f172a' };
+const THEME_SWATCH: Record<Theme, string> = {
+  'light-emerald': '#059669', 'light-blue': '#2563eb', 'light-violet': '#7c3aed', 'light-amber': '#d97706',
+  'light-rose': '#e11d48', 'light-teal': '#0891b2', 'dark-slate': '#0f172a',
+};
 
 /** Saqlangan mavzu; eski "light"/"dark" qiymatlari yangi nomlarga o'tkaziladi */
 function readTheme(): Theme {

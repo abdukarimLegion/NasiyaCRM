@@ -45,6 +45,35 @@ public class User extends AuditedEntity {
     @JoinColumn(name = "branch_id")
     private Branch branch;
 
+    /** Shaxsiy rol (ruxsatlar to'plami). null — tizim roli ruxsatlari ishlatiladi. */
+    @Column(name = "custom_role_id")
+    private Long customRoleId;
+
+    @Column(length = 14)
+    private String pinfl;
+
+    @Column(name = "passport_series", length = 20)
+    private String passportSeries;
+
+    @Column(name = "birth_date")
+    private java.time.LocalDate birthDate;
+
+    @Column(name = "home_address", length = 300)
+    private String homeAddress;
+
+    @Column(length = 20)
+    private String phone;
+
+    @Column(length = 150)
+    private String email;
+
+    /** Xodim o'zi nasiya olishi mumkinmi (standart: yo'q — komplayens cheklovi). */
+    @Column(name = "allow_nasiya", nullable = false)
+    private boolean allowNasiya = false;
+
+    @Column(name = "nasiya_note", length = 300)
+    private String nasiyaNote;
+
     /** Shaxsiy ruxsatlar. null — rolning ruxsatlari ishlatiladi. */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "permissions", columnDefinition = "jsonb")

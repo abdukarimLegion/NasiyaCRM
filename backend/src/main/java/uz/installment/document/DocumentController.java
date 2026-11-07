@@ -69,6 +69,34 @@ public class DocumentController {
         return pdf(documents.issue(id, Code.CLAIM, lang(lang), me));
     }
 
+    /**
+     * Sudga topshirish paketi (ZIP): shartnoma, talabnoma va da'vo arizasi PDF'lari. Talabnoma va da'vo
+     * uchun raqam beriladi va jurnalga yoziladi (muddati o'tgan qarz bo'lishi shart).
+     */
+    @PostMapping("/contracts/{id}/legal-package")
+    @PreAuthorize("hasAuthority('COLLECTION_LEGAL')")
+    public ResponseEntity<byte[]> legalPackage(@PathVariable Long id, @RequestParam(defaultValue = "uz") String lang,
+                                               @AuthenticationPrincipal AuthUser me) throws java.io.IOException {
+        String l = lang(lang);
+        var contract = documents.contract(id, l, me);
+        var demand = documents.issue(id, Code.DEMAND, l, me);
+        var claim = documents.issue(id, Code.CLAIM, l, me);
+        var out = new java.io.ByteArrayOutputStream();
+        try (var zip = new java.util.zip.ZipOutputStream(out, StandardCharsets.UTF_8)) {
+            int n = 1;
+            for (var pdf : List.of(contract, demand, claim)) {
+                zip.putNextEntry(new java.util.zip.ZipEntry(n++ + "-" + pdf.fileName()));
+                zip.write(pdf.bytes());
+                zip.closeEntry();
+            }
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/zip"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename("legal-package-" + id + ".zip", StandardCharsets.UTF_8).build().toString())
+                .body(out.toByteArray());
+    }
+
     @GetMapping("/contracts/{id}/log")
     @PreAuthorize("hasAnyAuthority('CONTRACTS_VIEW','COLLECTION_VIEW')")
     public List<DocumentService.LogRow> log(@PathVariable Long id, @AuthenticationPrincipal AuthUser me) {

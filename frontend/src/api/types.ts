@@ -1,6 +1,6 @@
 /* Backend DTO'lariga mos tiplar. Pul summalari JSON'da number bo'lib keladi (so'm). */
 
-export type Role = 'ADMIN' | 'CREDIT_OFFICER' | 'COLLECTOR' | 'CASHIER';
+export type Role = 'ADMIN' | 'CREDIT_OFFICER' | 'COLLECTOR' | 'CASHIER' | 'RISK_ANALYST' | 'LEGAL_OFFICER' | 'BRANCH_MANAGER';
 export type ContractStatus = 'DRAFT' | 'ACTIVE' | 'LATE' | 'CLOSED' | 'CANCELLED';
 export type ScheduleStatus = 'PENDING' | 'PARTIAL' | 'PAID' | 'LATE';
 export type RiskCategory = 'A' | 'B' | 'C' | 'D';
@@ -8,7 +8,7 @@ export type Decision = 'APPROVED' | 'REVIEW' | 'REJECTED';
 export type Factor = 'INCOME' | 'TENURE' | 'FAMILY' | 'HISTORY' | 'DISCIPLINE' | 'GUARANTOR';
 export type StopFactor =
   | 'BLACKLIST' | 'FRAUD' | 'DUP_PINFL' | 'PASSPORT_EXPIRED'
-  | 'INCOME_NOT_VERIFIED' | 'COURT' | 'OVERDUE' | 'OVERLIMIT';
+  | 'INCOME_NOT_VERIFIED' | 'COURT' | 'OVERDUE' | 'OVERLIMIT' | 'EMPLOYEE_RESTRICTED';
 export type PaymentMethod = 'CASH' | 'CARD' | 'PAYME' | 'CLICK' | 'UZUM' | 'BANK_TRANSFER';
 export type Channel = 'SMS' | 'TELEGRAM' | 'BOTH';
 
@@ -26,7 +26,7 @@ export type Permission =
   | 'PAYMENTS_VIEW' | 'PAYMENTS_ACCEPT' | 'PRODUCTS_VIEW' | 'PRODUCTS_EDIT'
   | 'COLLECTION_VIEW' | 'COLLECTION_WORK' | 'COLLECTION_ASSIGN' | 'COLLECTION_LEGAL'
   | 'NOTIFICATIONS_VIEW' | 'NOTIFICATIONS_EDIT'
-  | 'KPI_VIEW_ALL' | 'KPI_MANAGE' | 'FORECAST_VIEW'
+  | 'KPI_VIEW_ALL' | 'KPI_MANAGE' | 'FORECAST_VIEW' | 'ANALYTICS_VIEW'
   | 'BRANCHES_VIEW' | 'BRANCHES_MANAGE' | 'ALL_BRANCHES'
   | 'USERS_MANAGE' | 'SETTINGS_EDIT' | 'DOCUMENTS_EDIT';
 
@@ -41,6 +41,41 @@ export interface UserView {
   permissions: Permission[];
   /** true — xodimga rolidan farqli shaxsiy ruxsatlar berilgan */
   customPermissions: boolean;
+  customRoleId?: number;
+  pinfl?: string;
+  passportSeries?: string;
+  birthDate?: string;
+  homeAddress?: string;
+  phone?: string;
+  email?: string;
+  allowNasiya: boolean;
+  nasiyaNote?: string;
+}
+
+export interface CustomRole {
+  id: number;
+  name: string;
+  description?: string;
+  color: string;
+  baseRole: Role;
+  permissions: Permission[];
+  users: number;
+}
+
+export interface CreditReport {
+  id: number;
+  source: string;
+  reportDate: string;
+  score?: number;
+  rating?: 'A' | 'B' | 'C' | 'D' | 'E';
+  activeLoans: number;
+  totalDebt: number;
+  monthlyObligation: number;
+  overdueFlag: boolean;
+  maxOverdueDays: number;
+  note?: string;
+  enteredBy?: string;
+  createdAt: string;
 }
 
 export interface UserBrief {
@@ -184,6 +219,7 @@ export interface Product {
   termMax: number;
   stock: number;
   active: boolean;
+  supplierId?: number;
 }
 
 export interface ScoringRequest {
@@ -201,8 +237,16 @@ export interface ScoringResult {
   decision: Decision;
 }
 
-export interface QuoteRequest {
+export interface CartItem {
   productId: number;
+  quantity: number;
+  unitPrice?: number;
+}
+
+export interface QuoteRequest {
+  /** Savat (bir nechta mahsulot). Berilsa productId/price e'tiborga olinmaydi. */
+  items?: CartItem[];
+  productId?: number;
   price?: number;
   downPayment?: number;
   markupPct?: number;
@@ -292,6 +336,84 @@ export interface ContractDetails {
   officerName?: string;
   collectorId?: number;
   collectorName?: string;
+  items: ContractItem[];
+  applicationId?: number;
+}
+
+export interface ContractItem {
+  productId?: number;
+  productName: string;
+  unitPrice: number;
+  quantity: number;
+  lineTotal: number;
+}
+
+export type ApplicationStatus = 'PENDING' | 'APPROVED' | 'CONTRACTED' | 'REJECTED' | 'PARTNER';
+
+export interface ApplicationView {
+  id: number;
+  applicationNo: string;
+  clientId: number;
+  clientName: string;
+  clientPhone: string;
+  itemsSummary: string;
+  costPrice: number;
+  downPayment: number;
+  markupPct: number;
+  salePrice: number;
+  installmentTotal: number;
+  termMonths: number;
+  monthlyPayment: number;
+  scoreTotal?: number;
+  riskCategory?: RiskCategory;
+  decision?: Decision;
+  status: ApplicationStatus;
+  rejectionReason?: string;
+  officerId?: number;
+  officerName?: string;
+  branchId?: number;
+  branchName?: string;
+  decidedByName?: string;
+  decidedAt?: string;
+  contractId?: number;
+  contractNo?: string;
+  createdAt: string;
+  scoreDetails?: { stopFactors?: StopFactor[]; points?: Record<Factor, number> };
+  provider: string;
+  partnerName?: string;
+  partnerTxId?: string;
+  partnerCommission?: number;
+  partnerHandoverAt?: string;
+}
+
+export interface Partner {
+  id: number;
+  code: string;
+  name: string;
+  commissionPct: number;
+  maxTerm: number;
+  minDownPct: number;
+  dtiPct: number;
+  active: boolean;
+}
+
+export interface PartnerOffer {
+  code: string;
+  name: string;
+  limit: number;
+  maxMonthly: number;
+  maxTerm: number;
+  commissionPct: number;
+  minDownPct: number;
+  eligible: boolean;
+  reason: 'OK' | 'TERM' | 'DOWN' | 'LIMIT' | 'RISK';
+  commission: number;
+}
+
+export interface PartnerOffers {
+  internal: { limit: number; freeMonthly: number; covers: boolean };
+  partners: PartnerOffer[];
+  recommendation: { provider?: string; reason: 'INTERNAL_COVERS' | 'PARTNER_LOWEST_COMMISSION' | 'NO_LIMIT' };
 }
 
 export interface PaymentDto {
@@ -403,7 +525,7 @@ export interface DocLogRow {
   createdAt: string;
 }
 
-export type KpiMetric = 'CONTRACTS' | 'SALES' | 'COLLECTED' | 'RECOVERED' | 'ACTIONS' | 'QUALITY';
+export type KpiMetric = 'APPLICATIONS' | 'CONTRACTS' | 'SALES' | 'COLLECTED' | 'RECOVERED' | 'ACTIONS' | 'QUALITY';
 export type KpiGrade = 'A' | 'B' | 'C' | 'D';
 
 export interface KpiConfig {
@@ -420,6 +542,9 @@ export interface KpiTargets {
   recoveredAmount: number;
   actionsCount: number;
   bonusAmount: number;
+  applicationsCount: number;
+  baseSalary: number;
+  salesBonusPct: number;
 }
 
 export interface KpiMetricResult {
@@ -447,6 +572,11 @@ export interface OperatorKpi {
   promisesMade: number;
   promisesKept: number;
   rank: number;
+  applications: number;
+  conversionPct?: number;
+  baseSalary: number;
+  salesBonus: number;
+  totalPayout: number;
 }
 
 export interface KpiReport {
@@ -459,6 +589,7 @@ export interface KpiReport {
     totalSales: number;
     totalCollected: number;
     totalRecovered: number;
+    totalPayroll: number;
   };
   config: KpiConfig;
   operators: OperatorKpi[];
@@ -489,6 +620,8 @@ export interface ForecastPoint {
   cumulativeNet: number;
   debtEnd: number;
   arrearsEnd: number;
+  partnerVolume: number;
+  partnerProfit: number;
 }
 
 export interface ForecastTotals {
@@ -498,6 +631,30 @@ export interface ForecastTotals {
   netCash: number;
   debtEnd: number;
   arrearsEnd: number;
+  partnerVolume: number;
+  partnerProfit: number;
+}
+
+export type StressLevel = 'LOW' | 'MODERATE' | 'HIGH';
+
+export interface ForecastFinancing {
+  ownCapital: number;
+  peakNeed: number;
+  ownUsed: number;
+  externalRequired: number;
+  ownSharePct: number;
+  externalSharePct: number;
+  fundingCost: number;
+  opex: number;
+  grossProfit: number;
+  partnerProfit: number;
+  netProfit: number;
+  capitalSavedByPartners: number;
+  netLiquidity: number;
+  eclProvision: number;
+  recommendedReserve: number;
+  estimatedNplPct?: number;
+  stress: { level: StressLevel; profitLoss: number; inflowLoss: number; nplIncreasePct: number };
 }
 
 export interface Forecast {
@@ -510,6 +667,10 @@ export interface Forecast {
     openDebt: number;
     arrears: number;
     historyMonths: number;
+    histDownPct: number;
+    ownCapital: number;
+    monthlyOpex: number;
+    fundingCostPct: number;
   };
   points: ForecastPoint[];
   totals: ForecastTotals;
@@ -520,6 +681,8 @@ export interface Forecast {
   seasonality: number[];
   customSeasonality: boolean;
   suggestedSeasonality?: number[];
+  financing: ForecastFinancing;
+  financingPoints: { month: string; liquidity: number; externalBalance: number; fundingCost: number; netProfit: number }[];
 }
 
 export interface Dashboard {
@@ -584,4 +747,86 @@ export interface Settings {
   roundingStep: number;
   maxActiveContracts: number;
   smsSender?: string;
+}
+
+export type VerificationMode = 'NONE' | 'OTP' | 'BIOMETRIC' | 'ANY' | 'BOTH';
+
+export interface AdvancedSettings {
+  verificationMode: VerificationMode;
+  otpExpirySeconds: number;
+  minFaceMatchPct: number;
+  monthlyOpex: number;
+  ownCapital: number;
+  fundingCostPct: number;
+}
+
+export interface VerificationStatus {
+  mode: VerificationMode;
+  minFaceMatchPct: number;
+  verified: ('OTP' | 'BIOMETRIC')[];
+  satisfied: boolean;
+}
+
+export interface OtpSent {
+  id: number;
+  maskedPhone: string;
+  expiresAt: string;
+  /** Faqat dev profilda: SMS provayder ulanmagan muhitda sinash uchun */
+  devCode?: string;
+}
+
+export interface VerificationResult {
+  id: number;
+  method: 'OTP' | 'BIOMETRIC';
+  status: 'PENDING' | 'VERIFIED' | 'FAILED' | 'EXPIRED';
+  matchPct?: number;
+  verifiedAt?: string;
+}
+
+export interface AnalyticsReport {
+  months: number;
+  categories: {
+    code: string; nameUz: string; nameRu: string; contracts: number; volume: number; avgTermMonths?: number;
+    avgMarkupPct?: number; expectedProfit: number; earnedProfit: number; debt: number; overdue: number;
+    overduePct?: number; nplDebt: number; nplPct?: number; sharePct?: number;
+  }[];
+  terms: { bucket: string; contracts: number; volume: number; avgMarkupPct?: number; debt: number; overduePct?: number; nplPct?: number }[];
+  aging: { key: 'current' | 'd1_30' | 'd31_60' | 'd61_90' | 'd90'; contracts: number; debt: number; sharePct?: number }[];
+  branches: { id: number; name: string; contracts: number; volume: number; collected: number; debt: number; overduePct?: number; target?: number; planPct?: number }[];
+  managers: { id: number; name: string; branch?: string; contracts: number; volume: number; avgScore?: number; debt: number; overduePct?: number }[];
+  monthly: { month: string; issued: number; collected: number; profit: number; partnerVolume: number; partnerCommission: number }[];
+  partners: { code: string; name: string; deals: number; volume: number; commission: number }[];
+  pnl: { profit: number; opex: number; operatingProfit: number; eclProvision: number; profitAfterProvision: number; partnerCommission: number; months: number };
+}
+
+export type StockStatus = 'OUT' | 'CRITICAL' | 'LOW' | 'OK' | 'OVER' | 'DEAD';
+
+export interface WarehouseProduct {
+  id: number; name: string; sku?: string; category: string; supplierId?: number; supplierName?: string;
+  stock: number; price: number; stockValue: number; sold30: number; sold90: number; perDay: number;
+  coverDays?: number; leadDays: number; incoming: number; recommendedQty: number; recommendedCost: number;
+  status: StockStatus;
+}
+
+export interface WarehouseAnalytics {
+  coverDays: number;
+  summary: {
+    products: number; units: number; stockValue: number; out: number; critical: number; low: number; dead: number;
+    deadValue: number; turnoverPerYear?: number; toOrderUnits: number; toOrderCost: number;
+  };
+  products: WarehouseProduct[];
+  suggestions: { supplierId?: number; supplierName?: string; leadDays: number; lines: number; units: number; cost: number }[];
+}
+
+export interface Supplier {
+  id: number; name: string; phone?: string; contactPerson?: string; leadTimeDays: number; note?: string; active: boolean;
+}
+
+export type OrderStatus = 'DRAFT' | 'APPROVED' | 'RECEIVED' | 'CANCELLED';
+
+export interface PurchaseOrder {
+  id: number; orderNo: string; supplierId: number; supplierName: string; status: OrderStatus; eta?: string;
+  notes?: string; createdBy?: string; approvedBy?: string; createdAt: string; approvedAt?: string; receivedAt?: string;
+  units: number; total: number;
+  items: { productId: number; productName: string; sku?: string; quantity: number; unitCost: number; lineTotal: number }[];
 }

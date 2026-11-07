@@ -101,6 +101,47 @@
   --ring: 0 0 0 3px rgba(37, 99, 235, 0.18);
 }
 
+
+/* ---- light-violet ---- */
+[data-theme="light-violet"] {
+  --primary:        #7c3aed;
+  --primary-strong: #6d28d9;
+  --primary-soft:   #f5f3ff;
+  --primary-border: #ddd6fe;
+  --glow: color-mix(in srgb, #7c3aed 7%, transparent);
+  --ring: 0 0 0 3px color-mix(in srgb, #7c3aed 18%, transparent);
+}
+
+/* ---- light-amber ---- */
+[data-theme="light-amber"] {
+  --primary:        #d97706;
+  --primary-strong: #b45309;
+  --primary-soft:   #fffbeb;
+  --primary-border: #fde68a;
+  --glow: color-mix(in srgb, #d97706 7%, transparent);
+  --ring: 0 0 0 3px color-mix(in srgb, #d97706 18%, transparent);
+}
+
+/* ---- light-rose ---- */
+[data-theme="light-rose"] {
+  --primary:        #e11d48;
+  --primary-strong: #be123c;
+  --primary-soft:   #fff1f2;
+  --primary-border: #fecdd3;
+  --glow: color-mix(in srgb, #e11d48 7%, transparent);
+  --ring: 0 0 0 3px color-mix(in srgb, #e11d48 18%, transparent);
+}
+
+/* ---- light-teal ---- */
+[data-theme="light-teal"] {
+  --primary:        #0891b2;
+  --primary-strong: #0e7490;
+  --primary-soft:   #ecfeff;
+  --primary-border: #a5f3fc;
+  --glow: color-mix(in srgb, #0891b2 7%, transparent);
+  --ring: 0 0 0 3px color-mix(in srgb, #0891b2 18%, transparent);
+}
+
 /* ---- YUMSHOQ TUNGI SLATE ---- */
 [data-theme="dark-slate"] {
   --bg:           #0f172a;

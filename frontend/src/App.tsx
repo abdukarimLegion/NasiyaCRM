@@ -10,14 +10,17 @@ import DashboardPage from './pages/DashboardPage';
 import ClientsPage from './pages/ClientsPage';
 import ClientDetailPage from './pages/ClientDetailPage';
 import NewCreditPage from './pages/NewCreditPage';
+import ApplicationsPage from './pages/ApplicationsPage';
 import ContractsPage from './pages/ContractsPage';
 import ContractDetailPage from './pages/ContractDetailPage';
 import PaymentsPage from './pages/PaymentsPage';
 import CollectionPage from './pages/CollectionPage';
 import ProductsPage from './pages/ProductsPage';
+import WarehousePage from './pages/WarehousePage';
 import NotificationsPage from './pages/NotificationsPage';
 import SettingsPage from './pages/SettingsPage';
 import KpiPage from './pages/KpiPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 import ForecastPage from './pages/ForecastPage';
 import BranchesPage from './pages/BranchesPage';
 
@@ -64,13 +67,16 @@ export default function App() {
         <Route path="clients" element={<Guard perms={['CLIENTS_VIEW']}><ClientsPage /></Guard>} />
         <Route path="clients/:id" element={<Guard perms={['CLIENTS_VIEW']}><ClientDetailPage /></Guard>} />
         <Route path="new-credit" element={<Guard perms={['CONTRACTS_CREATE']}><NewCreditPage /></Guard>} />
+        <Route path="applications" element={<Guard perms={['CONTRACTS_VIEW']}><ApplicationsPage /></Guard>} />
         <Route path="contracts" element={<Guard perms={['CONTRACTS_VIEW']}><ContractsPage /></Guard>} />
         <Route path="contracts/:id" element={<Guard perms={['CONTRACTS_VIEW']}><ContractDetailPage /></Guard>} />
         <Route path="payments" element={<Guard perms={['PAYMENTS_VIEW']}><PaymentsPage /></Guard>} />
         <Route path="collection/:stage?" element={<Guard perms={['COLLECTION_VIEW']}><CollectionPage /></Guard>} />
         <Route path="products" element={<Guard perms={['PRODUCTS_VIEW']}><ProductsPage /></Guard>} />
+        <Route path="warehouse" element={<Guard perms={['PRODUCTS_VIEW']}><WarehousePage /></Guard>} />
         <Route path="notifications" element={<Guard perms={['NOTIFICATIONS_VIEW']}><NotificationsPage /></Guard>} />
         <Route path="kpi" element={<KpiPage />} />
+        <Route path="analytics" element={<Guard perms={['ANALYTICS_VIEW']}><AnalyticsPage /></Guard>} />
         <Route path="forecast" element={<Guard perms={['FORECAST_VIEW']}><ForecastPage /></Guard>} />
         <Route path="branches" element={<Guard perms={['BRANCHES_VIEW']}><BranchesPage /></Guard>} />
         <Route path="settings/:tab?" element={<Guard perms={['SETTINGS_EDIT', 'USERS_MANAGE', 'DOCUMENTS_EDIT']}><SettingsPage /></Guard>} />

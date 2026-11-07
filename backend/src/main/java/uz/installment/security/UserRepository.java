@@ -13,5 +13,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByRole(Role role);
 
+    boolean existsByPinflAndIdNot(String pinfl, Long id);
+
     List<User> findAllByOrderByFullNameAsc();
 }

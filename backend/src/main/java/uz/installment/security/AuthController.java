@@ -39,18 +39,22 @@ public class AuthController {
      */
     public record UserView(Long id, String username, String fullName, Role role, boolean active,
                            Long branchId, String branchName, List<Permission> permissions,
-                           boolean customPermissions) {
+                           boolean customPermissions, Long customRoleId, String pinfl, String passportSeries,
+                           java.time.LocalDate birthDate, String homeAddress, String phone, String email,
+                           boolean allowNasiya, String nasiyaNote) {
         static UserView of(User u, Set<Permission> effective) {
             return new UserView(u.getId(), u.getUsername(), u.getFullName(), u.getRole(), u.isActive(),
                     u.getBranch() != null ? u.getBranch().getId() : null,
                     u.getBranch() != null ? u.getBranch().getName() : null,
                     effective.stream().sorted().toList(),
-                    !u.getRole().isAdmin() && u.getPermissions() != null);
+                    !u.getRole().isAdmin() && u.getPermissions() != null, u.getCustomRoleId(), u.getPinfl(),
+                    u.getPassportSeries(), u.getBirthDate(), u.getHomeAddress(), u.getPhone(), u.getEmail(),
+                    u.isAllowNasiya(), u.getNasiyaNote());
         }
     }
 
     UserView view(User u) {
-        return UserView.of(u, access.effective(u.getRole(), u.getPermissions()));
+        return UserView.of(u, access.effective(u.getRole(), u.getPermissions(), u.getCustomRoleId()));
     }
 
     @PostMapping("/login")

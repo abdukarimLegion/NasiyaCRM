@@ -33,7 +33,7 @@ export function CardHead({ title, sub, right }: { title: ReactNode; sub?: ReactN
 }
 
 type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'ghost' | 'soft' | 'gold';
+  variant?: 'primary' | 'ghost' | 'soft' | 'gold' | 'danger';
   size?: 'sm' | 'lg';
   icon?: IconName;
 };

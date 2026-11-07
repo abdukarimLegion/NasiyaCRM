@@ -28,17 +28,59 @@ public final class ForecastCalculator {
                          double[] seasonality) {
     }
 
-    public record Scenario(BigDecimal salesGrowthPct, BigDecimal collectionAdjPct, boolean includeNewSales) {
+    /** Makroiqtisodiy bosim: yig'ilish va undirishga ta'siri hamda jalb qilingan mablag' narxiga qo'shimcha (foiz punkti). */
+    public enum Stress {
+        LOW(1.0, 1.0, 0, 1.0), MODERATE(0.93, 0.85, 2.5, 1.25), HIGH(0.84, 0.70, 6.0, 1.5);
+
+        public final double rateFactor;
+        public final double recoveryFactor;
+        public final double fundingPremiumPts;
+        /** Tavsiya etilgan zaxira = ECL × shu koeffitsiyent */
+        public final double reserveBuffer;
+
+        Stress(double rateFactor, double recoveryFactor, double fundingPremiumPts, double reserveBuffer) {
+            this.rateFactor = rateFactor;
+            this.recoveryFactor = recoveryFactor;
+            this.fundingPremiumPts = fundingPremiumPts;
+            this.reserveBuffer = reserveBuffer;
+        }
+    }
+
+    /**
+     * Stsenariy. Birinchi uchta maydon — asosiy (what-if) sozlamalar; qolganlari ixtiyoriy:
+     * markupPct / termMonths (null — tarixiy o'rtacha), financedFactor (boshlang'ich to'lov o'zgarishi tufayli
+     * moliyalashtiriladigan summaning ko'paytuvchisi), stress, partnerSharePct (yangi savdoning hamkorlarga
+     * o'tadigan ulushi, %) va partnerMarginPct (hamkor savdosidan do'konga qoladigan sof marja, %).
+     */
+    public record Scenario(BigDecimal salesGrowthPct, BigDecimal collectionAdjPct, boolean includeNewSales,
+                           BigDecimal markupPct, Integer termMonths, double financedFactor, Stress stress,
+                           BigDecimal partnerSharePct, BigDecimal partnerMarginPct) {
+
+        public Scenario(BigDecimal salesGrowthPct, BigDecimal collectionAdjPct, boolean includeNewSales) {
+            this(salesGrowthPct, collectionAdjPct, includeNewSales, null, null, 1.0, Stress.LOW,
+                    BigDecimal.ZERO, BigDecimal.valueOf(15));
+        }
+
+        public Scenario adjusted(BigDecimal growth, BigDecimal collection) {
+            return new Scenario(growth, collection, includeNewSales, markupPct, termMonths, financedFactor, stress,
+                    partnerSharePct, partnerMarginPct);
+        }
+
+        public Scenario withStress(Stress s) {
+            return new Scenario(salesGrowthPct, collectionAdjPct, includeNewSales, markupPct, termMonths,
+                    financedFactor, s, partnerSharePct, partnerMarginPct);
+        }
     }
 
     public record Point(String month, BigDecimal seasonality, BigDecimal scheduled, BigDecimal fromSchedule,
                         BigDecimal fromArrears, BigDecimal newSales, BigDecimal fromNewSales, BigDecimal inflow,
                         BigDecimal profit, BigDecimal netCash, BigDecimal cumulativeNet, BigDecimal debtEnd,
-                        BigDecimal arrearsEnd) {
+                        BigDecimal arrearsEnd, BigDecimal partnerVolume, BigDecimal partnerProfit) {
     }
 
     public record Totals(BigDecimal inflow, BigDecimal profit, BigDecimal newSales, BigDecimal netCash,
-                         BigDecimal debtEnd, BigDecimal arrearsEnd) {
+                         BigDecimal debtEnd, BigDecimal arrearsEnd, BigDecimal partnerVolume,
+                         BigDecimal partnerProfit) {
     }
 
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
@@ -48,11 +90,15 @@ public final class ForecastCalculator {
 
     public static List<Point> project(Inputs in, Scenario sc) {
         int h = in.horizon();
-        double rate = clamp(in.onTimeRate().doubleValue() * (1 + sc.collectionAdjPct().doubleValue() / 100), 0, 1);
-        double recovery = clamp(in.recoveryRate().doubleValue(), 0, 1);
+        Stress stress = sc.stress() == null ? Stress.LOW : sc.stress();
+        double rate = clamp(in.onTimeRate().doubleValue() * (1 + sc.collectionAdjPct().doubleValue() / 100)
+                * stress.rateFactor, 0, 1);
+        double recovery = clamp(in.recoveryRate().doubleValue() * stress.recoveryFactor, 0, 1);
         double growth = 1 + sc.salesGrowthPct().doubleValue() / 100;
-        double markup = in.avgMarkupPct().doubleValue() / 100;
-        int term = Math.max(1, in.avgTermMonths());
+        double markup = (sc.markupPct() != null ? sc.markupPct() : in.avgMarkupPct()).doubleValue() / 100;
+        int term = Math.max(1, sc.termMonths() != null ? sc.termMonths() : in.avgTermMonths());
+        double share = clamp(sc.partnerSharePct() == null ? 0 : sc.partnerSharePct().doubleValue() / 100, 0, 0.85);
+        double partnerMargin = (sc.partnerMarginPct() == null ? 15 : sc.partnerMarginPct().doubleValue()) / 100;
 
         // Yangi nasiyalardan keladigan to'lovlar (oy indeksi bo'yicha)
         double[] newInflowDue = new double[h + term + 1];
@@ -70,7 +116,12 @@ public final class ForecastCalculator {
             double fromArrears = arrears * recovery;
             arrears = arrears - fromArrears + (scheduled - fromSchedule);
 
-            double sales = sc.includeNewSales() ? in.baseMonthlySales().doubleValue() * season * growth : 0;
+            double demand = sc.includeNewSales()
+                    ? in.baseMonthlySales().doubleValue() * season * growth * sc.financedFactor() : 0;
+            // yangi savdoning bir qismi hamkorlar (Alif/Uzum/TBC) orqali o'tadi: qarz hamkorda, do'konga marja qoladi
+            double partnerVol = demand * share;
+            double partnerProfit = partnerVol * partnerMargin;
+            double sales = demand - partnerVol;
             if (sales > 0) {
                 double monthly = sales * (1 + markup) / term;
                 for (int k = 1; k <= term; k++) {
@@ -86,20 +137,23 @@ public final class ForecastCalculator {
             double markupShare = scheduled > 0 ? scheduledMarkup / scheduled : markup / (1 + markup);
             double newShare = markup / (1 + markup);
             double profit = fromSchedule * markupShare + fromArrears * markupShare + fromNew * newShare;
-            double net = inflow - sales;
+            double net = inflow - sales + partnerProfit;
             cumulative += net;
             debt = debt + sales * (1 + markup) - inflow;
 
             out.add(new Point(ym.toString(), bd(season, 2), money(scheduled), money(fromSchedule), money(fromArrears),
                     money(sales), money(fromNew), money(inflow), money(profit), money(net), money(cumulative),
-                    money(Math.max(0, debt)), money(Math.max(0, arrears))));
+                    money(Math.max(0, debt)), money(Math.max(0, arrears)), money(partnerVol), money(partnerProfit)));
         }
         return out;
     }
 
     public static Totals totals(List<Point> points) {
         BigDecimal inflow = BigDecimal.ZERO, profit = BigDecimal.ZERO, sales = BigDecimal.ZERO, net = BigDecimal.ZERO;
+        BigDecimal pVol = BigDecimal.ZERO, pProfit = BigDecimal.ZERO;
         for (Point p : points) {
+            pVol = pVol.add(p.partnerVolume());
+            pProfit = pProfit.add(p.partnerProfit());
             inflow = inflow.add(p.inflow());
             profit = profit.add(p.profit());
             sales = sales.add(p.newSales());
@@ -107,7 +161,8 @@ public final class ForecastCalculator {
         }
         Point last = points.isEmpty() ? null : points.get(points.size() - 1);
         return new Totals(inflow, profit, sales, net,
-                last == null ? BigDecimal.ZERO : last.debtEnd(), last == null ? BigDecimal.ZERO : last.arrearsEnd());
+                last == null ? BigDecimal.ZERO : last.debtEnd(), last == null ? BigDecimal.ZERO : last.arrearsEnd(),
+                pVol, pProfit);
     }
 
     /**

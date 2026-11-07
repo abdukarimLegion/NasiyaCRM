@@ -144,17 +144,22 @@ Jar yig'ish: `./gradlew bootJar` → `backend/build/libs/installment-platform-0.
 
 | Paket | Vazifasi |
 |---|---|
-| `security` | JWT login, rollar (ADMIN, CREDIT_OFFICER, COLLECTOR, CASHIER), bo'lim darajasidagi ruxsatlar, foydalanuvchilar |
+| `security` | JWT login, rollar (ADMIN, CREDIT_OFFICER, COLLECTOR, CASHIER, BRANCH_MANAGER, RISK_ANALYST, LEGAL_OFFICER), shaxsiy rollar, bo'lim darajasidagi ruxsatlar, foydalanuvchilar va xodim komplayens ma'lumotlari |
 | `branch` | Filiallar: xodim va shartnoma filialga bog'lanadi, filial kesimidagi hisobot va oylik reja |
-| `client` | Mijozlar (JShShIR bo'yicha takrorlanmaydi) |
+| `client` | Mijozlar (JShShIR bo'yicha takrorlanmaydi), kredit tarixi (KATM) yozuvlari |
+| `application` | Nasiya arizalari: PENDING → APPROVED → CONTRACTED / REJECTED / PARTNER; rad etilganlari ham saqlanadi |
+| `verification` | Mijozni tasdiqlash: SMS OTP va biometrik natija (rejim sozlamada) |
+| `partner` | Hamkor provayderlar (Alif / Uzum / TBC): limit kalkulyatori, tavsiya, hamkorga topshirish |
+| `analytics` | Chuqur tahlil: kategoriyalar, muddatlar, aging, filial/menejer reytingi, foyda hisoboti |
+| `warehouse` | Ombor tahlili, yetkazib beruvchilar va xarid buyurtmalari |
 | `product` | Kategoriyalar va mahsulotlar (narx, standart ustama, muddat oralig'i, ombor) |
 | `scoring` | 100 ballik scoring, A/B/C/D risk toifasi, stop-faktorlar |
-| `contract` | Murobaha hisob-kitobi, shartnoma va to'lov jadvali |
+| `contract` | Murobaha hisob-kitobi, ko'p mahsulotli savat, shartnoma va to'lov jadvali |
 | `payment` | To'lov qabul qilish; to'lov eng eski oydan boshlab taqsimlanadi |
 | `collection` | Muddati o'tgan qarzlar, Soft / Hard / Legal bosqichlari, va'dalar, mas'ul xodim, sud va MIB ishlari |
 | `document` | Shartnoma, talabnoma va da'vo arizasi PDF'lari (tahrirlanadigan shablonlardan, OpenPDF) |
-| `kpi` | Operator KPI: rejalar, vaznlar, bonus — haqiqiy shartnoma, to'lov va undirish ma'lumotlaridan |
-| `forecast` | Pul oqimi prognozi: to'lov jadvallari, yig'ilish tarixi, mavsumiy koeffitsiyentlar, stsenariylar |
+| `kpi` | Operator KPI: arizalar, shartnomalar, savdo, tushum, undirish; oklad + savdo bonusi + KPI bonusi |
+| `forecast` | Pul oqimi prognozi va What-If simulyatori: stress-test, jalb qilingan mablag', kapital talabi, hamkor kanali |
 | `notification` | SMS (Eskiz) va Telegram shablonlari, jurnal |
 | `jobs` | Kunlik job: kechikishlarni yangilash va eslatmalar (09:00 Toshkent vaqti) |
 | `dashboard` | KPI'lar va grafiklar |
@@ -183,18 +188,57 @@ faqat to'lanmagan savdo narxi hisoblanadi.
 - Filialga biriktirilgan xodim `ALL_BRANCHES` ruxsatisiz faqat o'z filiali shartnomalari, to'lovlari,
   undirish ro'yxati va KPI'sini ko'radi. Filialsiz xodim (bosh ofis) — barchasini.
 
+### Arizalar va savat
+
+Nasiya avval **ariza** bo'ladi (`applications`): skoring natijasiga ko'ra `APPROVED` (shartnomaga tayyor),
+`PENDING` (C toifa — tasdiqlash huquqi bor xodim qaror qiladi) yoki `REJECTED` (sababi bilan saqlanadi).
+Shartnoma bir nechta mahsulotni o'z ichiga olishi mumkin (`contract_items`: mahsulot × miqdor); muddat
+barcha mahsulotlarning umumiy oralig'ida, standart ustama — qator summalari bo'yicha o'rtacha. Ariza
+bo'yicha tasdiqlash/rad etish, shartnoma tuzish va hamkorga topshirish **Arizalar** sahifasida.
+
+### Mijoz tasdiqlash (verifikatsiya)
+
+**Sozlamalar → Tasdiqlash va moliya** da rejim tanlanadi: `NONE`, `OTP`, `BIOMETRIC`, `ANY`, `BOTH`.
+SMS OTP mijoz telefoniga yuboriladi (5 ta urinish, muddat sozlanadi; kod faqat `dev` profilida javobda
+ko'rinadi). Biometrik tekshiruv uchun tashqi tizim (MyID, Face ID) natijasi — moslik foizi va jonlilik —
+xodim tomonidan kiritiladi: bu tizim biometrik provayder bilan **to'g'ridan-to'g'ri integratsiya qilinmagan**.
+Tasdiqlash 30 daqiqa amal qiladi va ariza yuborilganda tekshiriladi.
+
+### Hamkor provayderlar
+
+Alif / Uzum / TBC shartlari (komissiya, maksimal muddat, minimal boshlang'ich to'lov, DTI) **Sozlamalar →
+Hamkorlar** da. Limit = daromad × DTI × xavf koeffitsiyenti (A 1.0, B 0.8, C 0.5, D 0) × muddat — bu
+taxmin; yakuniy qaror hamkor tizimida. Ichki limit yetsa ichki murobaha, aks holda eng arzon komissiyali
+mos hamkor tavsiya etiladi. Topshirilgan savdoda shartnoma tuzilmaydi, tovar ombordan chiqadi, komissiya yoziladi.
+
 ### Operator KPI
 
 Ball = rejasi qo'yilgan ko'rsatkichlar bajarilishining vaznli o'rtachasi (har biri 150% bilan cheklanadi):
-shartnomalar soni, savdo hajmi, kassa tushumi, muddati o'tgandan undirilgan summa, undirish harakatlari,
+arizalar soni, shartnomalar soni, savdo hajmi, kassa tushumi, muddati o'tgandan undirilgan summa, undirish harakatlari,
 portfel sifati (`100 − 2 × muddati o'tgan ulush`). Bonus = bonus fondi × ball (60% dan past bo'lsa — 0,
-yuqorisi 120%). Vaznlar va chegaralar **Xodimlar KPI → KPI formulasi** da sozlanadi.
+yuqorisi 120%). Jami to'lov = oklad + savdo bonusi (savdo summasi × %) + KPI bonusi. Vaznlar va chegaralar
+**Xodimlar KPI → KPI formulasi** da, oklad va bonus foizi xodim kartasida sozlanadi; xodim kartasida har
+bir ko'rsatkich yakuniy ballga qancha ball qo'shgani ko'rsatiladi.
 
 ### Prognoz
 
 Jadvaldagi kelgusi to'lovlar × o'z vaqtida yig'ilish ulushi (oxirgi 6 oy), muddati o'tgan qarzdan oylik
 undirish (oxirgi 3 oy) va yangi nasiyalar (mavsumdan tozalangan o'rtacha savdo × oy koeffitsiyenti).
 Koeffitsiyentlar standart (O'zbekiston chakana savdosi) yoki 12 oylik tarixdan hisoblanadi.
+
+**Simulyator** qo'shimcha parametrlari: ustama, boshlang'ich to'lov, muddat, jalb qilingan mablag' narxi,
+makro-stress (past / o'rta / yuqori) va hamkorlar orqali o'tadigan savdo ulushi. Natija: kapital talabi
+(eng chuqur kassa kamomadi), o'z va jalb qilingan mablag' ulushi, jalb narxi, sof foyda (foyda + hamkor
+marjasi − jalb narxi − OPEX), tavsiya etilgan zaxira va stress ta'siri. OPEX, o'z kapitali va jalb narxi
+**Sozlamalar → Tasdiqlash va moliya** da.
+
+### Komplayens va rollar
+
+- Xodimga JShShIR, pasport va nasiya cheklovi (`allow_nasiya`, standart — yo'q) kiritiladi. Xodim JShShIR'iga
+  ariza berilsa, `EMPLOYEE_RESTRICTED` stop-faktori ishlaydi.
+- **Shaxsiy rol**: nom, rang va ruxsatlar to'plami; xodimga biriktiriladi, to'plam o'zgarsa darhol amal qiladi.
+- Kredit tarixi (KATM) hisobotlari qo'lda kiritiladi — byuro bilan avtomatik integratsiya yo'q.
+- Sud paketi (ZIP): shartnoma, talabnoma va da'vo arizasi PDF'lari (Undirish → Legal).
 
 ### SaaS'ga tayyorgarlik
 
@@ -213,11 +257,14 @@ ajratish va bir nechta instansiya uchun ShedLock qo'shish.
 shartnoma yaratish wizard'i, to'lov jadvali, kassada to'lov qabul qilish, undirish
 (Soft / Hard / Legal, va'dalar, sud ishlari), SMS/Telegram shablonlari va kunlik eslatmalar,
 shartnoma / talabnoma / da'vo arizasi PDF'lari, filiallar, bo'lim darajasidagi ruxsatlar,
-operator KPI, pul oqimi prognozi, dashboard, sozlamalar, Docker bilan deploy va zaxira nusxa.
+operator KPI (oklad va jami to'lov bilan), pul oqimi prognozi va What-If simulyatori, dashboard, sozlamalar,
+arizalar jarayoni, ko'p mahsulotli savat, mijoz verifikatsiyasi, hamkor provayderlar, chuqur analitika,
+ombor tahlili va xarid buyurtmalari, shaxsiy rollar, xodim komplayensi, kredit tarixi, sud paketi (ZIP),
+Docker bilan deploy va zaxira nusxa.
 
 **Keyingi bosqich:**
 1. Payme va Click merchant API (webhook, `external_id` bo'yicha idempotentlik tayyor).
-2. KATM (kredit tarixi) va MIB integratsiyasi: `ScoringService` dagi FRAUD/COURT/OVERDUE avtomatlashadi.
+2. KATM va MIB bilan avtomatik integratsiya (hozir kredit tarixi qo'lda kiritiladi); MyID/biometrik provayder va Alif/Uzum/TBC API'lari bilan ulanish.
 3. E-IMZO bilan shartnomani elektron imzolash (PDF tayyor).
 4. Telegram bot: mijoz `/start` bosib, `telegram_chat_id` ni ulaydi.
 5. Hisobotlar: Excel eksport.
