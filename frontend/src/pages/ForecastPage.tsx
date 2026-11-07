@@ -15,7 +15,9 @@ const INSIGHT_ICON: Record<string, IconName> = {
   HIGH_SEASON: 'calendar', NO_HISTORY: 'spark',
 };
 
-export default function ForecastPage() {
+/** mode="forecast" — asosiy prognoz; mode="simulator" — What-If parametrlari, stress-test va moliyalashtirish. */
+export default function ForecastPage({ mode = 'forecast' }: { mode?: 'forecast' | 'simulator' }) {
+  const sim = mode === 'simulator';
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const branch = useBranch();
@@ -80,8 +82,8 @@ export default function ForecastPage() {
     <div className="page">
       <div className="page-head">
         <div className="col" style={{ gap: 2 }}>
-          <h1 className="page-h1"><span className="h1-ic"><Icon name="trend" size={18} /></span>{t('fcTitle')}</h1>
-          <span className="faint" style={{ fontSize: 12.5 }}>{t('fcSub')}</span>
+          <h1 className="page-h1"><span className="h1-ic"><Icon name={sim ? 'sliders' : 'trend'} size={18} /></span>{t(sim ? 'simTitle' : 'fcTitle')}</h1>
+          <span className="faint" style={{ fontSize: 12.5 }}>{t(sim ? 'simSub' : 'fcSub')}</span>
         </div>
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
           <Seg value={horizon} onChange={setHorizon} options={[
@@ -92,6 +94,7 @@ export default function ForecastPage() {
       </div>
 
       <div className="fc-top">
+        {sim && (
         <Card className="fc-sim">
           <CardHead title={<><Icon name="sliders" size={16} /> {t('fcWhatIf')}</>} sub={t('fcWhatIfSub')}
             right={dirty && <button className="link-btn" onClick={resetAll}>{t('reset')}</button>} />
@@ -121,6 +124,7 @@ export default function ForecastPage() {
             )}
           </div>
         </Card>
+        )}
         <div className="scenario-grid" data-busy={isFetching}>
           {data.scenarios.map((s) => (
             <div key={s.key} className={`scenario sc-${s.key}`}>
@@ -139,7 +143,7 @@ export default function ForecastPage() {
         </div>
       </div>
 
-      <FinancingSection data={data} lang={lang} unit={unit} mln={mln} />
+      {sim && <FinancingSection data={data} lang={lang} unit={unit} mln={mln} />}
 
       <Card className="block">
         <CardHead title={t('fcCashFlow')} sub={`${t('fcCashFlowSub')} · ${unit}`} right={<Legend series={flowSeries} />} />
@@ -148,6 +152,8 @@ export default function ForecastPage() {
         </div>
       </Card>
 
+      {!sim && (
+        <>
       <div className="grid-2-1 block">
         <Card>
           <CardHead title={t('fcDebtTitle')} sub={unit} right={<Legend series={debtSeries} />} />
@@ -234,6 +240,8 @@ export default function ForecastPage() {
         </div>
         <div className="card-pad faint" style={{ fontSize: 11.5 }}>{t('fcNoPenalty')}</div>
       </Card>
+        </>
+      )}
     </div>
   );
 }
