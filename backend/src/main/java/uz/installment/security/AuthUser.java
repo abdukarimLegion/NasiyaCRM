@@ -4,7 +4,8 @@ import java.util.Set;
 
 /**
  * Joriy foydalanuvchi: JWT'dagi id + bazadan (keshdan) olingan rol, filial va ruxsatlar.
- * Ruxsat yoki filial o'zgarsa, keyingi so'rovdan boshlab amal qiladi (token qayta berilishi shart emas).
+ * Ruxsat, filial yoki active holat o'zgarsa, keyingi so'rovdan boshlab amal qiladi
+ * (token qayta berilishi shart emas).
  */
 public record AuthUser(Long id, String username, Role role, Long branchId, Set<Permission> permissions) {
 

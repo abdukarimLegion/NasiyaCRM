@@ -6,6 +6,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import uz.installment.audit.AuditService;
 import uz.installment.client.ClientDtos.ClientDetails;
 import uz.installment.client.ClientDtos.ClientListItem;
 import uz.installment.client.ClientDtos.ClientsSummary;
@@ -29,6 +30,7 @@ public class ClientService {
 
     private final ClientRepository repo;
     private final NamedParameterJdbcTemplate jdbc;
+    private final AuditService audit;
 
     /** Mijoz bo'yicha nasiya ko'rsatkichlari (ro'yxat uchun, bitta so'rov bilan). */
     private record Stats(long openContracts, BigDecimal activeDebt, BigDecimal monthlyObligation,
@@ -151,7 +153,12 @@ public class ClientService {
         }
         Client c = new Client();
         apply(c, req);
-        return ClientResponse.of(repo.save(c));
+        Client saved = repo.save(c);
+        audit.record("CLIENT_CREATE", "CLIENT", saved.getId(), Map.of(
+                "fullName", saved.getFullName(),
+                "pinfl", saved.getPinfl(),
+                "phone", saved.getPhone()));
+        return ClientResponse.of(saved);
     }
 
     @Transactional
@@ -161,6 +168,11 @@ public class ClientService {
             throw new BusinessException("DUPLICATE_PINFL", "Bu JShShIR bilan boshqa mijoz mavjud");
         }
         apply(c, req);
+        audit.record("CLIENT_UPDATE", "CLIENT", c.getId(), Map.of(
+                "fullName", c.getFullName(),
+                "pinfl", c.getPinfl(),
+                "phone", c.getPhone(),
+                "blacklisted", c.isBlacklisted()));
         return ClientResponse.of(c);
     }
 

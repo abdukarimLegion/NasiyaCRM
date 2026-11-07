@@ -1,5 +1,6 @@
 package uz.installment.security;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class AuthController {
     private final UserRepository users;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final LoginRateLimiter loginRateLimiter;
     private final AccessService access;
 
     public record LoginRequest(@NotBlank String username, @NotBlank String password) {
@@ -59,11 +61,19 @@ public class AuthController {
 
     @PostMapping("/login")
     @Transactional(readOnly = true)
-    public LoginResponse login(@Valid @RequestBody LoginRequest req) {
-        User user = users.findByUsername(req.username().trim())
+    public LoginResponse login(@Valid @RequestBody LoginRequest req, HttpServletRequest request) {
+        String username = req.username().trim();
+        String ip = request.getRemoteAddr();
+        loginRateLimiter.check(ip, username);
+
+        User user = users.findByUsername(username)
                 .filter(User::isActive)
                 .filter(u -> passwordEncoder.matches(req.password(), u.getPasswordHash()))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login yoki parol noto'g'ri"));
+                .orElseThrow(() -> {
+                    loginRateLimiter.failure(ip, username);
+                    return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login yoki parol noto'g'ri");
+                });
+        loginRateLimiter.success(ip, username);
         access.invalidate(user.getId());
         return new LoginResponse(jwtService.issue(user), jwtService.ttlSeconds(), view(user));
     }
@@ -71,7 +81,7 @@ public class AuthController {
     @GetMapping("/me")
     @Transactional(readOnly = true)
     public UserView me(@AuthenticationPrincipal AuthUser me) {
-        return users.findById(me.id()).map(this::view)
+        return users.findById(me.id()).filter(User::isActive).map(this::view)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
     }
 }

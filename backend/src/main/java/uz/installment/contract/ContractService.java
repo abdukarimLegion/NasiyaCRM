@@ -6,6 +6,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import uz.installment.audit.AuditService;
 import uz.installment.branch.Branch;
 import uz.installment.branch.BranchRepository;
 import uz.installment.client.Client;
@@ -17,21 +18,26 @@ import uz.installment.contract.ContractDtos.ContractDetails;
 import uz.installment.contract.ContractDtos.ContractListItem;
 import uz.installment.contract.ContractDtos.CreateContractRequest;
 import uz.installment.contract.ContractDtos.QuoteRequest;
+import uz.installment.payment.Payment;
+import uz.installment.payment.PaymentMethod;
+import uz.installment.payment.PaymentRepository;
 import uz.installment.product.Product;
 import uz.installment.product.ProductRepository;
+import uz.installment.scoring.CreditLimit;
 import uz.installment.scoring.ScoringEngine;
 import uz.installment.scoring.ScoringService;
 import uz.installment.security.AuthUser;
 import uz.installment.security.Permission;
+import uz.installment.security.Role;
 import uz.installment.security.UserRepository;
 import uz.installment.settings.SettingsService;
 import uz.installment.settings.TenantSettings;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -49,8 +55,10 @@ public class ContractService {
     private final ClientRepository clients;
     private final ProductRepository products;
     private final UserRepository users;
+    private final PaymentRepository payments;
     private final BranchRepository branches;
     private final SettingsService settings;
+    private final AuditService audit;
     private final ApplicationEventPublisher events;
     private final Clock clock;
 
@@ -156,11 +164,26 @@ public class ContractService {
      */
     @Transactional
     public Contract create(CreateContractRequest req, AuthUser officer, ScoringEngine.Result score, Long applicationId) {
-        Client client = clients.findById(req.clientId())
+        Client client = clients.findForUpdate(req.clientId())
                 .orElseThrow(() -> new NotFoundException("Mijoz", req.clientId()));
         Prepared prep = prepare(req.terms(), true);
         MurabahaCalculator.Quote q = prep.quote();
         TenantSettings cfg = settings.current();
+
+        // Ichki kredit limiti: bo'sh oylik quvvatdan oshib ketmasin.
+        CreditLimit.Result limit = CreditLimit.of(client.getMonthlyIncome(), score.risk(),
+                contracts.sumOpenMonthlyPayment(client.getId()));
+        boolean overCapacity = q.monthlyPayment().compareTo(limit.freeMonthly()) > 0;
+        boolean override = officer.role() == Role.ADMIN && Boolean.TRUE.equals(req.limitOverride());
+        if (overCapacity && !override) {
+            throw new BusinessException("OVER_CAPACITY", "Mijozning bo'sh oylik limiti "
+                    + limit.freeMonthly().stripTrailingZeros().toPlainString() + " so'm, yangi oylik to'lov "
+                    + q.monthlyPayment().stripTrailingZeros().toPlainString() + " so'm");
+        }
+        if (overCapacity && (req.overrideReason() == null || req.overrideReason().isBlank())) {
+            throw new BusinessException("OVERRIDE_REASON_REQUIRED",
+                    "Limitdan oshish uchun sabab ko'rsatilishi kerak");
+        }
 
         Contract c = new Contract();
         c.setContractNo(nextContractNo(cfg));
@@ -207,6 +230,8 @@ public class ContractService {
             l.product().setStock(l.product().getStock() - l.quantity());
         }
         Contract saved = contracts.save(c);
+        recordDownPayment(saved, q.downPayment(), req.downPaymentMethod(), officer);
+        auditContractCreated(saved, req, prep.lines(), overCapacity, req.overrideReason());
         events.publishEvent(new ContractCreatedEvent(saved.getId()));
         return saved;
     }
@@ -279,7 +304,54 @@ public class ContractService {
                 item.getProduct().setStock(item.getProduct().getStock() + item.getQuantity());
             }
         }
+        audit.record("CONTRACT_CANCEL", "CONTRACT", c.getId(), Map.of("contractNo", c.getContractNo()));
         return ContractDetails.of(c);
+    }
+
+    /** Boshlang'ich to'lov kassaga tushgan summa sifatida alohida to'lov yozuvi bilan qayd etiladi. */
+    private void recordDownPayment(Contract contract, BigDecimal amount, PaymentMethod method, AuthUser officer) {
+        if (amount == null || amount.signum() <= 0) {
+            return;
+        }
+        Payment p = new Payment();
+        p.setContract(contract);
+        p.setAmount(amount);
+        p.setMethod(method != null ? method : PaymentMethod.CASH);
+        p.setNote("Boshlang'ich to'lov");
+        if (officer != null) {
+            p.setCashier(users.getReferenceById(officer.id()));
+        }
+        payments.save(p);
+    }
+
+    private void auditContractCreated(Contract c, CreateContractRequest req, List<Line> lines,
+                                      boolean overCapacity, String overrideReason) {
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("contractNo", c.getContractNo());
+        details.put("clientId", c.getClient().getId());
+        details.put("items", lines.stream().map(l -> Map.of(
+                "productId", l.product().getId(),
+                "name", l.product().getName(),
+                "quantity", l.quantity(),
+                "unitPrice", l.unitPrice())).toList());
+        details.put("salePrice", c.getSalePrice());
+        details.put("downPayment", c.getDownPayment());
+        details.put("monthlyPayment", c.getMonthlyPayment());
+        details.put("termMonths", c.getTermMonths());
+        if (lines.stream().anyMatch(l -> l.unitPrice().compareTo(l.product().getPrice()) != 0)) {
+            details.put("priceOverride", true);
+        }
+        if (req.terms().markupPct() != null) {
+            details.put("markupOverride", req.terms().markupPct());
+        }
+        audit.record("CONTRACT_CREATE", "CONTRACT", c.getId(), details);
+        if (overCapacity) {
+            Map<String, Object> overrideDetails = new LinkedHashMap<>();
+            overrideDetails.put("contractNo", c.getContractNo());
+            overrideDetails.put("reason", overrideReason);
+            overrideDetails.put("monthlyPayment", c.getMonthlyPayment());
+            audit.record("CONTRACT_LIMIT_OVERRIDE", "CONTRACT", c.getId(), overrideDetails);
+        }
     }
 
     private String nextContractNo(TenantSettings cfg) {

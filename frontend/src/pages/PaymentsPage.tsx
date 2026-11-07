@@ -99,7 +99,7 @@ function Cashier() {
 
       <div className="col" style={{ gap: 20, minWidth: 0 }}>
         {activeId != null
-          ? <ContractCashier id={activeId} onPaid={(payment, contract) => setReceipt({ payment, contract })} />
+          ? <ContractCashier key={activeId} id={activeId} onPaid={(payment, contract) => setReceipt({ payment, contract })} />
           : <Card><Empty>{t('selectContract')}</Empty></Card>}
       </div>
 
@@ -116,7 +116,7 @@ function ContractCashier({ id, onPaid }: { id: number; onPaid: (p: PaymentDto, c
     queryKey: ['contract', id],
     queryFn: () => api.get<ContractDetails>(`/api/contracts/${id}`),
   });
-  const [amount, setAmount] = useState(0);
+  const [amountOverride, setAmountOverride] = useState<number | null>(null);
   const [method, setMethod] = useState<PaymentMethod>('CASH');
   const [note, setNote] = useState('');
 
@@ -124,13 +124,8 @@ function ContractCashier({ id, onPaid }: { id: number; onPaid: (p: PaymentDto, c
   const next = open[0];
   const overdue = open.filter((s) => s.status === 'LATE').reduce((a, s) => a + s.amount - s.paidAmount, 0);
   const nextDueAmount = next ? next.amount - next.paidAmount : 0;
-
-  // Shartnoma almashganda summa navbatdagi to'lovga (kechikkan bo'lsa — kechikkan qarzga) qo'yiladi
-  useEffect(() => {
-    if (c) setAmount(overdue > 0 ? overdue : nextDueAmount);
-    setNote('');
-    // faqat boshqa shartnoma tanlanganda (to'lovdan keyin emas)
-  }, [c?.id]);
+  // Foydalanuvchi qo'lda kiritmagan bo'lsa, tavsiya etilgan summa har doim yangilanadi.
+  const amount = amountOverride ?? (overdue > 0 ? overdue : nextDueAmount);
 
   const pay = useMutation({
     mutationFn: () => api.post<PaymentDto>('/api/payments', { contractId: id, amount, method, note: note || undefined }),
@@ -140,6 +135,8 @@ function ContractCashier({ id, onPaid }: { id: number; onPaid: (p: PaymentDto, c
       void qc.invalidateQueries({ queryKey: ['cashier-contracts'] });
       void qc.invalidateQueries({ queryKey: ['payments'] });
       void qc.invalidateQueries({ queryKey: ['dashboard'] });
+      setAmountOverride(null);
+      setNote('');
       onPaid(p, fresh);
     },
   });
@@ -177,11 +174,11 @@ function ContractCashier({ id, onPaid }: { id: number; onPaid: (p: PaymentDto, c
             <div className="pay-form">
               <Field label={t('amountSom')} err={tooMuch ? t('amountTooMuch') : undefined}>
                 <input className="input mono" type="number" min={1} max={c.remaining} value={amount || ''}
-                  data-err={tooMuch} style={{ fontWeight: 700 }} onChange={(e) => setAmount(Number(e.target.value))} />
+                  data-err={tooMuch} style={{ fontWeight: 700 }} onChange={(e) => setAmountOverride(Number(e.target.value))} />
                 <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-                  {nextDueAmount > 0 && <button className="chip-sm" onClick={() => setAmount(nextDueAmount)}>{t('nextShort')}: {fmtMln(nextDueAmount, lang)}</button>}
-                  {overdue > 0 && <button className="chip-sm is-danger" onClick={() => setAmount(overdue)}>{t('overdue')}: {fmtMln(overdue, lang)}</button>}
-                  <button className="chip-sm" onClick={() => setAmount(c.remaining)}>{t('payOff')}: {fmtMln(c.remaining, lang)}</button>
+                  {nextDueAmount > 0 && <button className="chip-sm" onClick={() => setAmountOverride(nextDueAmount)}>{t('nextShort')}: {fmtMln(nextDueAmount, lang)}</button>}
+                  {overdue > 0 && <button className="chip-sm is-danger" onClick={() => setAmountOverride(overdue)}>{t('overdue')}: {fmtMln(overdue, lang)}</button>}
+                  <button className="chip-sm" onClick={() => setAmountOverride(c.remaining)}>{t('payOff')}: {fmtMln(c.remaining, lang)}</button>
                 </div>
               </Field>
               <Field label={t('method')}>

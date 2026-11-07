@@ -5,6 +5,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import uz.installment.audit.AuditService;
 import uz.installment.common.BusinessException;
 import uz.installment.common.NotFoundException;
 import uz.installment.common.PageResponse;
@@ -33,6 +34,7 @@ public class PaymentService {
     private final PaymentRepository payments;
     private final ContractRepository contracts;
     private final UserRepository users;
+    private final AuditService audit;
     private final Clock clock;
 
     public record RegisterPayment(Long contractId, BigDecimal amount, PaymentMethod method, String externalId,
@@ -51,13 +53,18 @@ public class PaymentService {
 
     /**
      * To'lovni qabul qiladi. Payme/Click callback'lari takrorlansa (bir xil externalId),
-     * yangi yozuv yaratilmaydi — avvalgisi qaytariladi (idempotent).
+     * yangi yozuv yaratilmaydi — avvalgisi qaytariladi (idempotent). externalId boshqa
+     * shartnomaga tegishli bo'lsa — EXTERNAL_ID_CONFLICT xatosi qaytariladi.
      */
     @Transactional
     public PaymentDto register(RegisterPayment req, AuthUser cashier) {
         if (req.externalId() != null && !req.externalId().isBlank()) {
             var existing = payments.findByMethodAndExternalId(req.method(), req.externalId());
             if (existing.isPresent()) {
+                if (!existing.get().getContract().getId().equals(req.contractId())) {
+                    throw new BusinessException("EXTERNAL_ID_CONFLICT",
+                            "Bu externalId boshqa shartnomaga bog'langan: " + req.externalId());
+                }
                 return PaymentDto.of(existing.get());
             }
         }
@@ -101,7 +108,14 @@ public class PaymentService {
             p.getAllocations().add(e);
         }
         contract.refreshStatus(today);
-        return PaymentDto.of(payments.save(p));
+        Payment saved = payments.save(p);
+        audit.record("PAYMENT_REGISTER", "PAYMENT", saved.getId(), Map.of(
+                "contractId", contract.getId(),
+                "contractNo", contract.getContractNo(),
+                "amount", saved.getAmount(),
+                "method", saved.getMethod().name(),
+                "externalId", saved.getExternalId() == null ? "" : saved.getExternalId()));
+        return PaymentDto.of(saved);
     }
 
     @Transactional(readOnly = true)

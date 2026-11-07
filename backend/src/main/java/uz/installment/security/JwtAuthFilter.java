@@ -16,6 +16,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * JWT'ni tekshiradi va foydalanuvchini {@link AccessService} orqali qayta o'qiydi.
+ * Shu tufayli bloklangan foydalanuvchi, o'zgargan rol yoki ruxsat darhol kuchga kiradi;
+ * token ichidagi eski rol/active holatiga ishonilmaydi.
+ */
 @Component
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {

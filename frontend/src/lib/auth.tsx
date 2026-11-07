@@ -56,7 +56,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     can: (...perms) => !!user && perms.some((p) => user.permissions?.includes(p)),
   }), [user, ready, login, logout, refresh]);
 
-  // @ts-ignore
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
