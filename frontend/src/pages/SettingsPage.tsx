@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Navigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../api/client';
-import type { DocCode, DocTemplate, Permission, PermissionMatrix, Role, Settings, UserView } from '../api/types';
+import type { AdvancedSettings, DocCode, DocTemplate, Permission, PermissionMatrix, Role, Settings, UserView } from '../api/types';
 import { Avatar, Badge, Btn, Card, CardHead, Empty, ErrorBox, Field, Icon, Modal } from '../components/ui';
 import { Tabs, type TabItem } from '../components/viz';
 import { useAuth } from '../lib/auth';
@@ -33,7 +33,7 @@ export default function SettingsPage() {
   return (
     <div className="page col" style={{ gap: 18, maxWidth: 1100 }}>
       <Tabs items={items} />
-      {current === 'general' && <GeneralCard />}
+      {current === 'general' && <><GeneralCard /><AdvancedCard /></>}
       {current === 'users' && <UsersCard />}
       {current === 'roles' && <RolesCard />}
       {current === 'documents' && <DocumentsCard />}
@@ -90,6 +90,59 @@ function GeneralCard() {
           {text('roundingStep', t('roundingStep'), 'number')}
           {text('maxActiveContracts', t('maxActiveContracts'), 'number')}
           {text('smsSender', t('smsSender'))}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+/** Mijoz verifikatsiyasi qoidalari va moliyaviy parametrlar (prognoz, tahlil va simulyator ishlatadi). */
+function AdvancedCard() {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ['settings-advanced'], queryFn: () => api.get<AdvancedSettings>('/api/settings/advanced') });
+  const [d, setD] = useState<AdvancedSettings | null>(null);
+  useEffect(() => {
+    if (q.data) setD(q.data);
+  }, [q.data]);
+  const save = useMutation({
+    mutationFn: () => api.put<AdvancedSettings>('/api/settings/advanced', d),
+    onSuccess: (s) => {
+      qc.setQueryData(['settings-advanced'], s);
+      void qc.invalidateQueries({ queryKey: ['verification'] });
+      void qc.invalidateQueries({ queryKey: ['forecast'] });
+    },
+  });
+  if (!d) return <ErrorBox error={q.error} />;
+  const set = <K extends keyof AdvancedSettings>(k: K, v: AdvancedSettings[K]) => setD({ ...d, [k]: v });
+  const num = (k: keyof AdvancedSettings, label: string, hint?: string) => (
+    <Field label={label} hint={hint}>
+      <input className="input mono" type="number" min={0} value={d[k] as number} onChange={(e) => set(k, Number(e.target.value) as never)} />
+    </Field>
+  );
+  return (
+    <Card>
+      <CardHead title={t('advancedTitle')} sub={t('advancedSub')} right={
+        <Btn size="sm" icon="check" disabled={save.isPending} onClick={() => save.mutate()}>{save.isSuccess ? t('saved') : t('save')}</Btn>
+      } />
+      <div className="card-pad col" style={{ gap: 14 }}>
+        <ErrorBox error={save.error} />
+        <b style={{ fontSize: 13 }}>{t('verifyTitle')}</b>
+        <div className="form-grid">
+          <Field label={t('verifyMode')} hint={t('verifyModeHint')}>
+            <select className="select" value={d.verificationMode} onChange={(e) => set('verificationMode', e.target.value as AdvancedSettings['verificationMode'])}>
+              {(['NONE', 'OTP', 'BIOMETRIC', 'ANY', 'BOTH'] as const).map((m) => <option key={m} value={m}>{t(`vm_${m}`)}</option>)}
+            </select>
+          </Field>
+          {num('otpExpirySeconds', t('otpExpiry'), t('seconds'))}
+          {num('minFaceMatchPct', t('minFaceMatch'), '%')}
+        </div>
+        <div className="divider" />
+        <b style={{ fontSize: 13 }}>{t('financeParams')}</b>
+        <div className="form-grid">
+          {num('monthlyOpex', t('monthlyOpex'), t('somHint'))}
+          {num('ownCapital', t('ownCapital'), t('ownCapitalHint'))}
+          {num('fundingCostPct', t('fundingCost'), t('fundingCostHint'))}
         </div>
       </div>
     </Card>

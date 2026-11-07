@@ -454,7 +454,7 @@ export interface DocLogRow {
   createdAt: string;
 }
 
-export type KpiMetric = 'CONTRACTS' | 'SALES' | 'COLLECTED' | 'RECOVERED' | 'ACTIONS' | 'QUALITY';
+export type KpiMetric = 'APPLICATIONS' | 'CONTRACTS' | 'SALES' | 'COLLECTED' | 'RECOVERED' | 'ACTIONS' | 'QUALITY';
 export type KpiGrade = 'A' | 'B' | 'C' | 'D';
 
 export interface KpiConfig {
@@ -471,6 +471,9 @@ export interface KpiTargets {
   recoveredAmount: number;
   actionsCount: number;
   bonusAmount: number;
+  applicationsCount: number;
+  baseSalary: number;
+  salesBonusPct: number;
 }
 
 export interface KpiMetricResult {
@@ -498,6 +501,11 @@ export interface OperatorKpi {
   promisesMade: number;
   promisesKept: number;
   rank: number;
+  applications: number;
+  conversionPct?: number;
+  baseSalary: number;
+  salesBonus: number;
+  totalPayout: number;
 }
 
 export interface KpiReport {
@@ -510,6 +518,7 @@ export interface KpiReport {
     totalSales: number;
     totalCollected: number;
     totalRecovered: number;
+    totalPayroll: number;
   };
   config: KpiConfig;
   operators: OperatorKpi[];
@@ -635,4 +644,38 @@ export interface Settings {
   roundingStep: number;
   maxActiveContracts: number;
   smsSender?: string;
+}
+
+export type VerificationMode = 'NONE' | 'OTP' | 'BIOMETRIC' | 'ANY' | 'BOTH';
+
+export interface AdvancedSettings {
+  verificationMode: VerificationMode;
+  otpExpirySeconds: number;
+  minFaceMatchPct: number;
+  monthlyOpex: number;
+  ownCapital: number;
+  fundingCostPct: number;
+}
+
+export interface VerificationStatus {
+  mode: VerificationMode;
+  minFaceMatchPct: number;
+  verified: ('OTP' | 'BIOMETRIC')[];
+  satisfied: boolean;
+}
+
+export interface OtpSent {
+  id: number;
+  maskedPhone: string;
+  expiresAt: string;
+  /** Faqat dev profilda: SMS provayder ulanmagan muhitda sinash uchun */
+  devCode?: string;
+}
+
+export interface VerificationResult {
+  id: number;
+  method: 'OTP' | 'BIOMETRIC';
+  status: 'PENDING' | 'VERIFIED' | 'FAILED' | 'EXPIRED';
+  matchPct?: number;
+  verifiedAt?: string;
 }

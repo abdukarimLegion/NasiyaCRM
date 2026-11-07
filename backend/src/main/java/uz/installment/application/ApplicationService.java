@@ -22,6 +22,8 @@ import uz.installment.scoring.ScoringService;
 import uz.installment.security.AuthUser;
 import uz.installment.security.Permission;
 import uz.installment.security.UserRepository;
+import uz.installment.verification.VerificationService;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -41,6 +43,8 @@ public class ApplicationService {
     private final ScoringService scoring;
     private final ContractService contracts;
     private final ObjectMapper json;
+    private final VerificationService verification;
+    private final NamedParameterJdbcTemplate jdbc;
 
     /**
      * Arizani qabul qiladi va skoring qiladi.
@@ -59,6 +63,8 @@ public class ApplicationService {
         ContractService.Prepared prep = contracts.prepare(req.terms(), false);
         MurabahaCalculator.Quote q = prep.quote();
         ScoringEngine.Result score = scoring.evaluate(client, req.scoring());
+        // Sozlamada talab qilingan bo'lsa, mijoz tasdiqlangan bo'lishi shart (rad etilgan ariza uchun ham tekshiramiz)
+        String verifiedBy = verification.requireFor(client.getId());
 
         Application a = new Application();
         a.setApplicationNo(String.format("AR-%d-%05d", java.time.Year.now().getValue(), applications.nextNo()));
@@ -96,6 +102,10 @@ public class ApplicationService {
             default -> a.setStatus(ApplicationStatus.APPROVED);
         }
         applications.save(a);
+        if (verifiedBy != null) {
+            jdbc.update("update applications set verification_methods = :m, verified_at = now() where id = :id",
+                    Map.of("m", verifiedBy, "id", a.getId()));
+        }
         if (contractNow && a.getStatus() == ApplicationStatus.APPROVED) {
             convert(a, officer, score);
         }

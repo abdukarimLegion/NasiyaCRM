@@ -5,8 +5,10 @@ import { useTranslation } from 'react-i18next';
 import { api, qs } from '../api/client';
 import type {
   ApplicationView, CartItem, ClientListItem, CreditLimitResult, Factor, Page, Product, Quote, QuoteRequest, ScoringRequest, ScoringResult, StopFactor,
+  VerificationStatus,
 } from '../api/types';
 import { Avatar, Badge, Btn, Card, CardHead, ErrorBox, Field, Gauge, Icon } from '../components/ui';
+import VerificationPanel from '../components/VerificationPanel';
 import { useAuth } from '../lib/auth';
 import { useBranch } from '../lib/branch';
 import { fmtDate, fmtSom } from '../lib/format';
@@ -33,6 +35,13 @@ export default function NewCreditPage() {
   const clients = useQuery({
     queryKey: ['clients', query, 0],
     queryFn: () => api.get<Page<ClientListItem>>(`/api/clients${qs({ q: query, size: 30 })}`),
+  });
+
+  // mijoz tasdiqlanganmi (sozlamadagi rejimga ko'ra); rejim NONE bo'lsa to'siq yo'q
+  const verification = useQuery({
+    queryKey: ['verification', clientId],
+    queryFn: () => api.get<VerificationStatus>(`/api/verifications/clients/${clientId}/status`),
+    enabled: clientId != null,
   });
 
   // 2-3. scoring
@@ -121,7 +130,7 @@ export default function NewCreditPage() {
   const decision = scoring.data?.decision;
   // Rad etilgan yoki tasdiqlash kutadigan ariza ham saqlanadi (KPI va tahlil uchun), shuning uchun to'siq yo'q
   const canNext = [
-    clientId != null,
+    clientId != null && (verification.data?.satisfied ?? false),
     !!scoring.data,
     !!scoring.data,
     !!quote.data,
@@ -169,6 +178,7 @@ export default function NewCreditPage() {
           </div>
         </Card>
       )}
+      {step === 0 && clientId != null && <div style={{ marginTop: 16 }}><VerificationPanel clientId={clientId} /></div>}
 
       {step === 1 && (
         <div className="dash-grid">

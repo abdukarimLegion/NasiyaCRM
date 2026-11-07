@@ -1,6 +1,7 @@
 package uz.installment.kpi;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -38,7 +39,9 @@ public class KpiController {
     public record TargetsRequest(@PositiveOrZero int contractsCount, @NotNull @PositiveOrZero BigDecimal salesVolume,
                                  @NotNull @PositiveOrZero BigDecimal collectedAmount,
                                  @NotNull @PositiveOrZero BigDecimal recoveredAmount,
-                                 @PositiveOrZero int actionsCount, @NotNull @PositiveOrZero BigDecimal bonusAmount) {
+                                 @PositiveOrZero int actionsCount, @NotNull @PositiveOrZero BigDecimal bonusAmount,
+                                 @PositiveOrZero int applicationsCount, @PositiveOrZero BigDecimal baseSalary,
+                                 @PositiveOrZero @DecimalMax("100") BigDecimal salesBonusPct) {
     }
 
     public record ConfigRequest(@NotNull Map<KpiCalculator.Metric, @Min(0) @Max(100) Integer> weights,
@@ -73,7 +76,8 @@ public class KpiController {
             throw new NotFoundException("Xodim", userId);
         }
         service.saveTargets(userId, new KpiService.Targets(req.contractsCount(), req.salesVolume(),
-                req.collectedAmount(), req.recoveredAmount(), req.actionsCount(), req.bonusAmount()));
+                req.collectedAmount(), req.recoveredAmount(), req.actionsCount(), req.bonusAmount(),
+                req.applicationsCount(), req.baseSalary(), req.salesBonusPct()));
     }
 
     @GetMapping("/config")

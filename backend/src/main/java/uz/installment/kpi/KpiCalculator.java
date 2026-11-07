@@ -20,7 +20,7 @@ import java.util.Map;
  */
 public final class KpiCalculator {
 
-    public enum Metric { CONTRACTS, SALES, COLLECTED, RECOVERED, ACTIONS, QUALITY }
+    public enum Metric { APPLICATIONS, CONTRACTS, SALES, COLLECTED, RECOVERED, ACTIONS, QUALITY }
 
     public enum Grade { A, B, C, D }
 
@@ -28,6 +28,7 @@ public final class KpiCalculator {
 
         public static Config defaults() {
             Map<Metric, Integer> w = new EnumMap<>(Metric.class);
+            w.put(Metric.APPLICATIONS, 10);
             w.put(Metric.CONTRACTS, 20);
             w.put(Metric.SALES, 25);
             w.put(Metric.COLLECTED, 20);

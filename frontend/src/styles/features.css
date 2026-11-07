@@ -227,3 +227,7 @@
 @media (max-width: 640px) { .cart-line { flex-wrap: wrap; } .cart-sum { min-width: 0; margin-left: auto; } }
 .btn-danger { background: var(--danger); color: #fff; }
 .btn-danger:hover { filter: brightness(1.1); }
+
+/* ---- KPI tushuntirish ---- */
+.bd-row { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; }
+.bd-pay { padding: 12px 14px; border-radius: 12px; background: var(--bg-2); display: flex; flex-direction: column; gap: 8px; }
