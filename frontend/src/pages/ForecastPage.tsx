@@ -2,8 +2,8 @@ import { useDeferredValue, useState } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, qs } from '../api/client';
-import type { Forecast } from '../api/types';
-import { Btn, Card, CardHead, ErrorBox, Icon, Loading, Seg } from '../components/ui';
+import type { Forecast, StressLevel } from '../api/types';
+import { Btn, Card, CardHead, ErrorBox, Icon, Loading, Seg, Stat } from '../components/ui';
 import type { IconName } from '../components/icons';
 import { Legend, LineChart, type Series } from '../components/viz';
 import { useAuth } from '../lib/auth';
@@ -24,12 +24,36 @@ export default function ForecastPage() {
   const [growth, setGrowth] = useState(0);
   const [collectionAdj, setCollectionAdj] = useState(0);
   const [newSales, setNewSales] = useState(true);
+  // kengaytirilgan parametrlar; null — tarixiy (haqiqiy) qiymat ishlatiladi
+  const [markup, setMarkup] = useState<number | null>(null);
+  const [downPct, setDownPct] = useState<number | null>(null);
+  const [term, setTerm] = useState<number | null>(null);
+  const [stress, setStress] = useState<StressLevel>('LOW');
+  const [fundingCost, setFundingCost] = useState<number | null>(null);
+  const [partnerShare, setPartnerShare] = useState(0);
+  const [partnerMargin, setPartnerMargin] = useState(15);
   const g = useDeferredValue(growth);
   const c = useDeferredValue(collectionAdj);
+  const dm = useDeferredValue(markup);
+  const dd = useDeferredValue(downPct);
+  const dt = useDeferredValue(term);
+  const df = useDeferredValue(fundingCost);
+  const dps = useDeferredValue(partnerShare);
+  const dpm = useDeferredValue(partnerMargin);
+  const dirty = growth !== 0 || collectionAdj !== 0 || markup != null || downPct != null || term != null
+    || stress !== 'LOW' || fundingCost != null || partnerShare !== 0;
+  const resetAll = () => {
+    setGrowth(0); setCollectionAdj(0); setMarkup(null); setDownPct(null); setTerm(null);
+    setStress('LOW'); setFundingCost(null); setPartnerShare(0); setPartnerMargin(15);
+  };
 
   const { data, isLoading, error, isFetching } = useQuery({
-    queryKey: ['forecast', horizon, g, c, newSales, branch.param],
-    queryFn: () => api.get<Forecast>(`/api/forecast${qs({ horizon, growth: g, collectionAdj: c, newSales, branchId: branch.param })}`),
+    queryKey: ['forecast', horizon, g, c, newSales, branch.param, dm, dd, dt, stress, df, dps, dpm],
+    queryFn: () => api.get<Forecast>(`/api/forecast${qs({
+      horizon, growth: g, collectionAdj: c, newSales, branchId: branch.param,
+      markup: dm ?? undefined, downPct: dd ?? undefined, term: dt ?? undefined, stress,
+      fundingCost: df ?? undefined, partnerShare: dps || undefined, partnerMargin: dps ? dpm : undefined,
+    })}`),
     placeholderData: keepPreviousData,
   });
 
@@ -70,16 +94,31 @@ export default function ForecastPage() {
       <div className="fc-top">
         <Card className="fc-sim">
           <CardHead title={<><Icon name="sliders" size={16} /> {t('fcWhatIf')}</>} sub={t('fcWhatIfSub')}
-            right={(growth !== 0 || collectionAdj !== 0) && (
-              <button className="link-btn" onClick={() => { setGrowth(0); setCollectionAdj(0); }}>{t('reset')}</button>
-            )} />
-          <div className="card-pad col" style={{ gap: 18 }}>
+            right={dirty && <button className="link-btn" onClick={resetAll}>{t('reset')}</button>} />
+          <div className="card-pad fc-sim-grid">
             <SliderRow label={t('fcGrowth')} value={growth} min={-50} max={100} step={5} onChange={setGrowth} />
             <SliderRow label={t('fcCollectionAdj')} value={collectionAdj} min={-30} max={20} step={1} onChange={setCollectionAdj} />
             <label className="check-row">
               <input type="checkbox" checked={newSales} onChange={(e) => setNewSales(e.target.checked)} />
               {t('fcIncludeNewSales')}
             </label>
+            <div className="divider" />
+            <OptSlider label={t('fcMarkup')} value={markup} auto={`${data.assumptions.avgMarkupPct}%`} min={0} max={60} step={1} unit="%" onChange={setMarkup} />
+            <OptSlider label={t('fcDownPct')} value={downPct} auto={`${data.assumptions.histDownPct}%`} min={0} max={60} step={5} unit="%" onChange={setDownPct} />
+            <OptSlider label={t('fcTerm')} value={term} auto={`${data.assumptions.avgTermMonths} ${t('months')}`} min={3} max={24} step={1} unit={` ${t('months')}`} onChange={setTerm} />
+            <OptSlider label={t('fcFunding')} value={fundingCost} auto={`${data.assumptions.fundingCostPct}%`} min={0} max={50} step={1} unit="%" onChange={setFundingCost} />
+            <div className="col" style={{ gap: 6 }}>
+              <span style={{ fontWeight: 600, fontSize: 12.5 }}>{t('fcStress')}</span>
+              <Seg value={stress} onChange={setStress} options={[
+                { value: 'LOW', label: t('stress_LOW') }, { value: 'MODERATE', label: t('stress_MODERATE') }, { value: 'HIGH', label: t('stress_HIGH') },
+              ]} />
+              <span className="faint" style={{ fontSize: 11.5 }}>{t(`stressHint_${stress}`)}</span>
+            </div>
+            <div className="divider" />
+            <SliderRow label={t('fcPartnerShare')} value={partnerShare} min={0} max={85} step={5} onChange={setPartnerShare} plain />
+            {partnerShare > 0 && (
+              <SliderRow label={t('fcPartnerMargin')} value={partnerMargin} min={0} max={40} step={1} onChange={setPartnerMargin} plain />
+            )}
           </div>
         </Card>
         <div className="scenario-grid" data-busy={isFetching}>
@@ -99,6 +138,8 @@ export default function ForecastPage() {
           ))}
         </div>
       </div>
+
+      <FinancingSection data={data} lang={lang} unit={unit} mln={mln} />
 
       <Card className="block">
         <CardHead title={t('fcCashFlow')} sub={`${t('fcCashFlowSub')} · ${unit}`} right={<Legend series={flowSeries} />} />
@@ -197,15 +238,15 @@ export default function ForecastPage() {
   );
 }
 
-function SliderRow({ label, value, min, max, step, onChange }: {
-  label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void;
+function SliderRow({ label, value, min, max, step, onChange, plain }: {
+  label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void; plain?: boolean;
 }) {
   return (
     <div className="col" style={{ gap: 6 }}>
       <div className="row between" style={{ fontSize: 12.5 }}>
         <span style={{ fontWeight: 600 }}>{label}</span>
-        <b className="mono" style={{ color: value > 0 ? 'var(--success)' : value < 0 ? 'var(--danger)' : 'var(--text-faint)' }}>
-          {value > 0 ? '+' : ''}{value}%
+        <b className="mono" style={{ color: plain ? 'var(--text)' : value > 0 ? 'var(--success)' : value < 0 ? 'var(--danger)' : 'var(--text-faint)' }}>
+          {value > 0 && !plain ? '+' : ''}{value}%
         </b>
       </div>
       <input type="range" className="range" min={min} max={max} step={step} value={value}
@@ -251,5 +292,94 @@ function SeasonalityCard({ data, editable }: { data: Forecast; editable: boolean
         <p className="faint" style={{ fontSize: 11.5, margin: '12px 0 0' }}>{t('fcSeasonHint')}</p>
       </div>
     </Card>
+  );
+}
+
+/** Ixtiyoriy parametr: o'zgartirilmasa tarixiy (haqiqiy) qiymat ishlatiladi. */
+function OptSlider({ label, value, auto, min, max, step, unit, onChange }: {
+  label: string; value: number | null; auto: string; min: number; max: number; step: number; unit: string;
+  onChange: (v: number | null) => void;
+}) {
+  const { t } = useTranslation();
+  const mid = Math.round((min + max) / 2);
+  return (
+    <div className="col" style={{ gap: 6 }}>
+      <div className="row between" style={{ fontSize: 12.5 }}>
+        <span style={{ fontWeight: 600 }}>{label}</span>
+        {value == null
+          ? <button className="link-btn mono" onClick={() => onChange(mid)}>{t('fcAuto')}: {auto}</button>
+          : <span className="row" style={{ gap: 8 }}>
+              <b className="mono">{value}{unit}</b>
+              <button className="link-btn" onClick={() => onChange(null)}>{t('fcAuto')}</button>
+            </span>}
+      </div>
+      <input type="range" className="range" min={min} max={max} step={step} value={value ?? mid} disabled={value == null}
+        onChange={(e) => onChange(Number(e.target.value))} />
+    </div>
+  );
+}
+
+/** Kapital talabi, o'z/jalb qilingan mablag', sof foyda, zaxira va stress ta'siri. */
+function FinancingSection({ data, lang, unit, mln }: { data: Forecast; lang: string; unit: string; mln: (n: number) => string }) {
+  const { t } = useTranslation();
+  const f = data.financing;
+  const fin = data.financingPoints.map((p) => ({ ...p, label: fmtMonth(p.month, lang, true) }));
+  const finSeries: Series[] = [
+    { key: 'liquidity', label: t('fcLiquidity'), color: 'var(--primary)', type: 'area' },
+    { key: 'externalBalance', label: t('fcExternal'), color: 'var(--danger)', type: 'area' },
+    { key: 'netProfit', label: t('fcNetProfitMonth'), color: 'var(--success)', type: 'line', dashed: true },
+  ];
+  const stressed = f.stress.level !== 'LOW';
+  return (
+    <>
+      <div className="kpi4 block">
+        <Stat icon="wallet" tone="info" label={t('fcCapitalNeed')} value={fmtMln(f.peakNeed, lang)}
+          sub={<>{t('fcOwnCapital')}: <b>{fmtMln(f.ownCapital, lang)}</b></>} />
+        <Stat icon="building" tone={f.externalRequired > 0 ? 'danger' : 'success'} label={t('fcExternalNeed')} value={fmtMln(f.externalRequired, lang)}
+          sub={<>{t('fcFundingCost')}: <b>{fmtMln(f.fundingCost, lang)}</b></>} />
+        <Stat icon="trend" tone={f.netProfit < 0 ? 'danger' : 'success'} label={t('fcNetProfit')} value={fmtMln(f.netProfit, lang)}
+          sub={<>{t('fcGrossProfit')}: <b>{fmtMln(f.grossProfit, lang)}</b> · OPEX: <b>{fmtMln(f.opex, lang)}</b></>} />
+        <Stat icon="shield" tone="gold" label={t('fcReserve')} value={fmtMln(f.recommendedReserve, lang)}
+          sub={<>ECL: <b>{fmtMln(f.eclProvision, lang)}</b>{f.estimatedNplPct != null && <> · NPL: <b>{f.estimatedNplPct}%</b></>}</>} />
+      </div>
+
+      <div className="grid-2 block">
+        <Card>
+          <CardHead title={t('fcFundingMix')} sub={t('fcFundingMixSub')} />
+          <div className="card-pad col" style={{ gap: 12 }}>
+            <div className="bar" style={{ height: 14 }}>
+              <i style={{ width: `${f.ownSharePct}%`, background: 'var(--primary)' }} />
+            </div>
+            <div className="row between" style={{ fontSize: 12.5 }}>
+              <span><i className="fin-dot" style={{ background: 'var(--primary)' }} /> {t('fcOwnCapital')}: <b>{f.ownSharePct}%</b> · {fmtMln(f.ownUsed, lang)}</span>
+              <span><i className="fin-dot" style={{ background: 'var(--surface-3)' }} /> {t('fcExternal')}: <b>{f.externalSharePct}%</b> · {fmtMln(f.externalRequired, lang)}</span>
+            </div>
+            <dl className="kv">
+              <dt>{t('fcNetLiquidity')}</dt><dd className="mono" style={{ color: f.netLiquidity < 0 ? 'var(--danger)' : undefined }}>{fmtMln(f.netLiquidity, lang)}</dd>
+              <dt>{t('fcFundingRate')}</dt><dd className="mono">{data.assumptions.fundingCostPct}%{stressed ? ` + ${f.stress.level === 'HIGH' ? 6 : 2.5}` : ''}</dd>
+              {f.partnerProfit > 0 && <><dt>{t('fcPartnerProfit')}</dt><dd className="mono" style={{ color: 'var(--success)' }}>{fmtMln(f.partnerProfit, lang)}</dd></>}
+              {f.capitalSavedByPartners > 0 && <><dt>{t('fcCapitalSaved')}</dt><dd className="mono">{fmtMln(f.capitalSavedByPartners, lang)}</dd></>}
+            </dl>
+          </div>
+        </Card>
+        <Card>
+          <CardHead title={<><Icon name="alert" size={16} /> {t('fcStressImpact')}</>} sub={t(`stress_${f.stress.level}`)} />
+          <div className="card-pad col" style={{ gap: 10 }}>
+            {stressed ? (
+              <dl className="kv">
+                <dt>{t('fcStressProfit')}</dt><dd className="mono" style={{ color: 'var(--danger)' }}>−{fmtMln(f.stress.profitLoss, lang)}</dd>
+                <dt>{t('fcStressInflow')}</dt><dd className="mono" style={{ color: 'var(--danger)' }}>−{fmtMln(f.stress.inflowLoss, lang)}</dd>
+                <dt>{t('fcStressNpl')}</dt><dd className="mono" style={{ color: 'var(--danger)' }}>+{f.stress.nplIncreasePct}%</dd>
+              </dl>
+            ) : <span className="faint" style={{ fontSize: 12.5 }}>{t('fcStressOff')}</span>}
+          </div>
+        </Card>
+      </div>
+
+      <Card className="block">
+        <CardHead title={t('fcLiquidityTitle')} sub={`${t('fcLiquiditySub')} · ${unit}`} right={<Legend series={finSeries} />} />
+        <div className="card-pad"><LineChart data={fin} series={finSeries} height={240} fmt={mln} /></div>
+      </Card>
+    </>
   );
 }

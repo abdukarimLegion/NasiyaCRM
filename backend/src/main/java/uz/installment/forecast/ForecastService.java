@@ -9,6 +9,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uz.installment.common.TenantContext;
+import uz.installment.settings.AdvancedSettingsService;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -41,7 +42,29 @@ public class ForecastService {
 
     public record Assumptions(BigDecimal onTimeRatePct, BigDecimal recoveryRatePct, BigDecimal baseMonthlySales,
                               BigDecimal avgMarkupPct, int avgTermMonths, BigDecimal openDebt, BigDecimal arrears,
-                              int historyMonths) {
+                              int historyMonths, BigDecimal histDownPct, BigDecimal ownCapital,
+                              BigDecimal monthlyOpex, BigDecimal fundingCostPct) {
+    }
+
+    /** Moliyalashtirish oyma-oy: likvidlik, jalb qilingan qarz qoldig'i, uning narxi va sof foyda. */
+    public record FinancingPoint(String month, BigDecimal liquidity, BigDecimal externalBalance,
+                                 BigDecimal fundingCost, BigDecimal netProfit) {
+    }
+
+    public record StressImpact(String level, BigDecimal profitLoss, BigDecimal inflowLoss, BigDecimal nplIncreasePct) {
+    }
+
+    /**
+     * Gorizont bo'yicha moliyaviy xulosa. peakNeed — eng chuqur kassa kamomadi (o'z kapitalidan oldin);
+     * externalRequired — shundan o'z kapitali qoplamagan qismi (jalb qilinadigan mablag'); netProfit =
+     * ichki foyda + hamkor marjasi − jalb qilingan mablag' narxi − OPEX.
+     */
+    public record Financing(BigDecimal ownCapital, BigDecimal peakNeed, BigDecimal ownUsed,
+                            BigDecimal externalRequired, BigDecimal ownSharePct, BigDecimal externalSharePct,
+                            BigDecimal fundingCost, BigDecimal opex, BigDecimal grossProfit,
+                            BigDecimal partnerProfit, BigDecimal netProfit, BigDecimal capitalSavedByPartners,
+                            BigDecimal netLiquidity, BigDecimal eclProvision, BigDecimal recommendedReserve,
+                            BigDecimal estimatedNplPct, StressImpact stress) {
     }
 
     public record ScenarioTotals(String key, BigDecimal salesGrowthPct, BigDecimal collectionAdjPct,
@@ -57,14 +80,25 @@ public class ForecastService {
     public record Forecast(Assumptions assumptions, List<ForecastCalculator.Point> points,
                            ForecastCalculator.Totals totals, List<ScenarioTotals> scenarios,
                            List<EclBucket> ecl, BigDecimal eclTotal, List<Insight> insights,
-                           double[] seasonality, boolean customSeasonality, double[] suggestedSeasonality) {
+                           double[] seasonality, boolean customSeasonality, double[] suggestedSeasonality,
+                           Financing financing, List<FinancingPoint> financingPoints) {
     }
 
     private final NamedParameterJdbcTemplate jdbc;
     private final ObjectMapper json;
     private final Clock clock;
+    private final AdvancedSettingsService advanced;
 
     public Forecast forecast(int horizon, ForecastCalculator.Scenario sc, Long branchId) {
+        return forecast(horizon, sc, branchId, null, null);
+    }
+
+    /**
+     * @param targetDownPct  yangi savdolarda o'rtacha boshlang'ich to'lov, % (null — tarixiy)
+     * @param fundingCostPct jalb qilingan mablag' narxi, yillik % (null — sozlamadagi qiymat)
+     */
+    public Forecast forecast(int horizon, ForecastCalculator.Scenario sc, Long branchId, Double targetDownPct,
+                             BigDecimal fundingCostPct) {
         int h = Math.max(3, Math.min(horizon, 24));
         ZoneId zone = clock.getZone();
         LocalDate today = LocalDate.now(clock);
@@ -184,6 +218,20 @@ public class ForecastService {
         BigDecimal avgMarkup = avg.get("markup") != null ? (BigDecimal) avg.get("markup") : BigDecimal.valueOf(20);
         int avgTerm = avg.get("term") != null ? ((Number) avg.get("term")).intValue() : 12;
 
+        // tarixiy o'rtacha boshlang'ich to'lov ulushi (narxdan): yangi savdoda o'zgartirilsa, moliyalashtiriladigan
+        // summa (narx − boshlang'ich to'lov) shu nisbatda o'zgaradi
+        BigDecimal histDownRatio = jdbc.queryForObject("""
+                select coalesce(sum(c.down_payment) / nullif(sum(c.cost_price), 0), 0)
+                from contracts c where c.status <> 'CANCELLED' and c.created_at >= :yearAgoTs and %s
+                """.formatted(branch), p, BigDecimal.class);
+        double histDown = histDownRatio == null ? 0 : histDownRatio.doubleValue();
+        if (targetDownPct != null) {
+            double target = Math.max(0, Math.min(90, targetDownPct)) / 100;
+            double factor = (1 - target) / Math.max(0.1, 1 - histDown);
+            sc = new ForecastCalculator.Scenario(sc.salesGrowthPct(), sc.collectionAdjPct(), sc.includeNewSales(),
+                    sc.markupPct(), sc.termMonths(), factor, sc.stress(), sc.partnerSharePct(), sc.partnerMarginPct());
+        }
+
         var in = new ForecastCalculator.Inputs(start, h, scheduled, scheduledMarkup, arrears, openDebt,
                 BigDecimal.valueOf(onTime), BigDecimal.valueOf(recovery), baseSales, avgMarkup, avgTerm, season);
         List<ForecastCalculator.Point> points = ForecastCalculator.project(in, sc);
@@ -197,10 +245,14 @@ public class ForecastService {
         List<EclBucket> ecl = ecl(p, branch);
         BigDecimal eclTotal = ecl.stream().map(EclBucket::reserve).reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        var cfg = advanced.get();
+        BigDecimal fundingPct = fundingCostPct != null ? fundingCostPct : cfg.fundingCostPct();
         Assumptions a = new Assumptions(pct(onTime), pct(recovery), baseSales, avgMarkup, avgTerm, openDebt, arrears,
-                activeMonths.size());
+                activeMonths.size(), pct(histDown), cfg.ownCapital(), cfg.monthlyOpex(), fundingPct);
+        List<FinancingPoint> fp = new ArrayList<>();
+        Financing fin = financing(in, sc, points, totals, a, eclTotal, fundingPct, fp);
         return new Forecast(a, points, totals, scenarios, ecl, eclTotal, insights(a, points), season, custom,
-                suggestion);
+                suggestion, fin, fp);
     }
 
     // ------------------------------------------------------------------ mavsumiylik sozlamasi
@@ -254,8 +306,64 @@ public class ForecastService {
                                            int growthDelta, int collectionDelta) {
         BigDecimal g = base.salesGrowthPct().add(BigDecimal.valueOf(growthDelta));
         BigDecimal c = base.collectionAdjPct().add(BigDecimal.valueOf(collectionDelta));
-        var sc = new ForecastCalculator.Scenario(g, c, base.includeNewSales());
+        var sc = base.adjusted(g, c);
         return new ScenarioTotals(key, g, c, ForecastCalculator.totals(ForecastCalculator.project(in, sc)));
+    }
+
+    /**
+     * Likvidlik va moliyalashtirish hisobi. Likvidlik = o'z kapitali + yig'ma sof pul oqimi; manfiy bo'lsa
+     * kamomad jalb qilingan mablag' bilan yopiladi va oyiga (yillik stavka / 12) narx to'lanadi.
+     * Makro-stress jalb qilingan mablag' stavkasiga qo'shimcha foiz punkti qo'shadi.
+     */
+    private static Financing financing(ForecastCalculator.Inputs in, ForecastCalculator.Scenario sc,
+                                       List<ForecastCalculator.Point> points, ForecastCalculator.Totals totals,
+                                       Assumptions a, BigDecimal eclTotal, BigDecimal fundingPct,
+                                       List<FinancingPoint> out) {
+        ForecastCalculator.Stress stress = sc.stress() == null ? ForecastCalculator.Stress.LOW : sc.stress();
+        double rate = (fundingPct.doubleValue() + stress.fundingPremiumPts) / 100 / 12;
+        double own = a.ownCapital().doubleValue();
+        double opex = a.monthlyOpex().doubleValue();
+        double prevExternal = 0, peakNeed = 0, fundingCost = 0, netProfitTotal = 0;
+        for (ForecastCalculator.Point pt : points) {
+            double cum = pt.cumulativeNet().doubleValue();
+            double liquidity = own + cum;
+            double external = Math.max(0, -liquidity);
+            double cost = prevExternal * rate;
+            double monthProfit = pt.profit().doubleValue() + pt.partnerProfit().doubleValue() - cost - opex;
+            fundingCost += cost;
+            netProfitTotal += monthProfit;
+            peakNeed = Math.max(peakNeed, -cum);
+            out.add(new FinancingPoint(pt.month(), money(liquidity), money(external), money(cost), money(monthProfit)));
+            prevExternal = external;
+        }
+        double ownUsed = Math.min(own, peakNeed);
+        double extReq = Math.max(0, peakNeed - own);
+        double ownShare = peakNeed > 0 ? ownUsed / peakNeed * 100 : 100;
+        BigDecimal eclProv = eclTotal;
+        BigDecimal reserve = eclTotal.multiply(BigDecimal.valueOf(stress.reserveBuffer)).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal npl = ForecastCalculator.pct(totals.arrearsEnd(), totals.debtEnd());
+
+        StressImpact impact = new StressImpact(stress.name(), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
+        if (stress != ForecastCalculator.Stress.LOW) {
+            var baseTotals = ForecastCalculator.totals(ForecastCalculator.project(in, sc.withStress(ForecastCalculator.Stress.LOW)));
+            BigDecimal baseNpl = ForecastCalculator.pct(baseTotals.arrearsEnd(), baseTotals.debtEnd());
+            impact = new StressImpact(stress.name(), baseTotals.profit().subtract(totals.profit()).max(BigDecimal.ZERO),
+                    baseTotals.inflow().subtract(totals.inflow()).max(BigDecimal.ZERO),
+                    npl == null || baseNpl == null ? BigDecimal.ZERO : npl.subtract(baseNpl).max(BigDecimal.ZERO));
+        }
+        BigDecimal gross = totals.profit();
+        return new Financing(a.ownCapital(), money(peakNeed), money(ownUsed), money(extReq), bd(ownShare, 1),
+                bd(100 - ownShare, 1), money(fundingCost), money(opex * points.size()), gross, totals.partnerProfit(),
+                money(netProfitTotal), totals.partnerVolume(), money(own + totals.netCash().doubleValue()), eclProv,
+                reserve, npl, impact);
+    }
+
+    private static BigDecimal money(double v) {
+        return BigDecimal.valueOf(v).setScale(0, RoundingMode.HALF_UP);
+    }
+
+    private static BigDecimal bd(double v, int scale) {
+        return BigDecimal.valueOf(v).setScale(scale, RoundingMode.HALF_UP);
     }
 
     private List<EclBucket> ecl(MapSqlParameterSource p, String branch) {

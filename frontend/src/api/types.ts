@@ -584,6 +584,8 @@ export interface ForecastPoint {
   cumulativeNet: number;
   debtEnd: number;
   arrearsEnd: number;
+  partnerVolume: number;
+  partnerProfit: number;
 }
 
 export interface ForecastTotals {
@@ -593,6 +595,30 @@ export interface ForecastTotals {
   netCash: number;
   debtEnd: number;
   arrearsEnd: number;
+  partnerVolume: number;
+  partnerProfit: number;
+}
+
+export type StressLevel = 'LOW' | 'MODERATE' | 'HIGH';
+
+export interface ForecastFinancing {
+  ownCapital: number;
+  peakNeed: number;
+  ownUsed: number;
+  externalRequired: number;
+  ownSharePct: number;
+  externalSharePct: number;
+  fundingCost: number;
+  opex: number;
+  grossProfit: number;
+  partnerProfit: number;
+  netProfit: number;
+  capitalSavedByPartners: number;
+  netLiquidity: number;
+  eclProvision: number;
+  recommendedReserve: number;
+  estimatedNplPct?: number;
+  stress: { level: StressLevel; profitLoss: number; inflowLoss: number; nplIncreasePct: number };
 }
 
 export interface Forecast {
@@ -605,6 +631,10 @@ export interface Forecast {
     openDebt: number;
     arrears: number;
     historyMonths: number;
+    histDownPct: number;
+    ownCapital: number;
+    monthlyOpex: number;
+    fundingCostPct: number;
   };
   points: ForecastPoint[];
   totals: ForecastTotals;
@@ -615,6 +645,8 @@ export interface Forecast {
   seasonality: number[];
   customSeasonality: boolean;
   suggestedSeasonality?: number[];
+  financing: ForecastFinancing;
+  financingPoints: { month: string; liquidity: number; externalBalance: number; fundingCost: number; netProfit: number }[];
 }
 
 export interface Dashboard {
