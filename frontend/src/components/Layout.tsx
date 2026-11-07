@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { Icon } from './ui';
@@ -27,16 +27,22 @@ export const NAV: { group: string; items: NavItem[] }[] = [
     { to: '/contracts', key: 'contracts', icon: 'contracts', perms: ['CONTRACTS_VIEW'] },
   ] },
   { group: 'nav_collection', items: [
-    { to: '/collection', key: 'collection', icon: 'collection', perms: ['COLLECTION_VIEW'] },
+    { to: '/collection', key: 'collectionOverviewNav', icon: 'collection', perms: ['COLLECTION_VIEW'] },
+    { to: '/collection/soft', key: 'softNav', icon: 'message', perms: ['COLLECTION_VIEW'] },
+    { to: '/collection/hard', key: 'hardNav', icon: 'alert', perms: ['COLLECTION_VIEW'] },
+    { to: '/collection/legal', key: 'legalNav', icon: 'scale', perms: ['COLLECTION_VIEW'] },
     { to: '/notifications', key: 'notifications', icon: 'bell', perms: ['NOTIFICATIONS_VIEW'] },
   ] },
   { group: 'nav_analytics', items: [
     { to: '/kpi', key: 'kpiNav', icon: 'target' },
     { to: '/analytics', key: 'analyticsNav', icon: 'analytics', perms: ['ANALYTICS_VIEW'] },
     { to: '/forecast', key: 'forecastNav', icon: 'trend', perms: ['FORECAST_VIEW'] },
+    { to: '/simulator', key: 'simulatorNav', icon: 'sliders', perms: ['FORECAST_VIEW'] },
   ] },
   { group: 'nav_system', items: [
     { to: '/branches', key: 'branchesNav', icon: 'building', perms: ['BRANCHES_VIEW'] },
+    { to: '/settings/users', key: 'usersNav', icon: 'clients', perms: ['USERS_MANAGE'] },
+    { to: '/settings/roles', key: 'rolesNav', icon: 'key', perms: ['USERS_MANAGE'] },
     { to: '/settings', key: 'settings', icon: 'settings', perms: ['SETTINGS_EDIT', 'USERS_MANAGE', 'DOCUMENTS_EDIT'] },
   ] },
 ];
@@ -82,9 +88,12 @@ export default function Layout() {
     if (settings?.brandName) document.title = settings.brandName;
   }, [settings?.brandName]);
 
-  const isCurrent = (i: NavItem) => (i.to === '/' ? location.pathname === '/' : location.pathname.startsWith(i.to));
-  const currentGroup = NAV.find((g) => g.items.some(isCurrent));
-  const current = currentGroup?.items.find(isCurrent);
+  // Eng aniq mos keladigan menyu bandi (masalan, /collection/soft — /collection emas)
+  const matches = (i: NavItem) => (i.to === '/' ? location.pathname === '/' : location.pathname === i.to || location.pathname.startsWith(`${i.to}/`));
+  const best = NAV.flatMap((g) => g.items.map((it) => ({ g, it }))).filter(({ it }) => matches(it))
+    .sort((a, b) => b.it.to.length - a.it.to.length)[0];
+  const currentGroup = best?.g;
+  const current = best?.it;
   const lang = i18n.language === 'ru' ? 'ru' : 'uz';
 
   return (
@@ -109,11 +118,11 @@ export default function Layout() {
               <div key={grp.group}>
                 <div className="nav-label">{t(grp.group)}</div>
                 {items.map((it) => (
-                  <NavLink key={it.to} to={it.to} end={it.to === '/'} className="nav-item"
+                  <Link key={it.to} to={it.to} className="nav-item" aria-current={current === it ? 'page' : undefined}
                     onClick={() => setDrawer(false)} style={{ textDecoration: 'none' }}>
                     <span className="nav-ic"><Icon name={it.icon} /></span>
                     <span>{t(it.key)}</span>
-                  </NavLink>
+                  </Link>
                 ))}
               </div>
             );

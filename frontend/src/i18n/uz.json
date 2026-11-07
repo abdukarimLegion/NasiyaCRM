@@ -985,5 +985,14 @@
   "monthlyObligation": "Oylik majburiyat",
   "maxOverdueDays": "Maks. kechikish, kun",
   "hasOverdue": "Kechikish bor",
-  "legalPackage": "Sud paketi (ZIP)"
+  "legalPackage": "Sud paketi (ZIP)",
+  "simulatorNav": "What-If simulyatori",
+  "simTitle": "What-If simulyatori",
+  "simSub": "Ustama, boshlang'ich to'lov, stress, jalb mablag' va hamkor kanali bo'yicha stsenariylar",
+  "collectionOverviewNav": "Umumiy undirish",
+  "softNav": "Soft (1–30 kun)",
+  "hardNav": "Hard (31–90 kun)",
+  "legalNav": "Legal (sud va MIB)",
+  "usersNav": "Foydalanuvchilar",
+  "rolesNav": "Rollar va ruxsatlar"
 }
