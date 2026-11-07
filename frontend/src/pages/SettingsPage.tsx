@@ -140,6 +140,16 @@ function AdvancedCard() {
           {num('minFaceMatchPct', t('minFaceMatch'), '%')}
         </div>
         <div className="divider" />
+        <b style={{ fontSize: 13 }}>{t('mibTitle')}</b>
+        <div className="form-grid">
+          <Field label={t('mibModeLabel')} hint={t('mibModeHint')}>
+            <select className="select" value={d.mibMode} onChange={(e) => set('mibMode', e.target.value as AdvancedSettings['mibMode'])}>
+              {(['OFF', 'OPTIONAL', 'REQUIRED'] as const).map((m) => <option key={m} value={m}>{t(`mibModeOpt_${m}`)}</option>)}
+            </select>
+          </Field>
+          {num('mibValidityDays', t('mibValidity'), t('days'))}
+        </div>
+        <div className="divider" />
         <b style={{ fontSize: 13 }}>{t('financeParams')}</b>
         <div className="form-grid">
           {num('monthlyOpex', t('monthlyOpex'), t('somHint'))}

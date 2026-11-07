@@ -45,6 +45,20 @@ app:
       email: ${ESKIZ_EMAIL:}
       password: ${ESKIZ_PASSWORD:}
       from: ${ESKIZ_FROM:4546}
+  # MIB (Majburiy ijro byurosi) qarzdorligini JShShIR bo'yicha tekshirish
+  mib:
+    provider: ${APP_MIB_PROVIDER:none}          # none | stub | http
+    url: ${APP_MIB_URL:}                        # masalan https://mib.example.uz/api/debts/{pinfl}
+    method: ${APP_MIB_METHOD:GET}               # GET | POST
+    token: ${APP_MIB_TOKEN:}
+    auth-header: ${APP_MIB_AUTH_HEADER:Authorization}
+    auth-scheme: ${APP_MIB_AUTH_SCHEME:Bearer}  # bo'sh qoldirilsa token to'g'ridan-to'g'ri yuboriladi
+    timeout-seconds: ${APP_MIB_TIMEOUT:10}
+    debt-flag-path: ${APP_MIB_DEBT_FLAG_PATH:}  # javobdagi boolean (masalan data.hasDebt)
+    amount-path: ${APP_MIB_AMOUNT_PATH:}        # javobdagi jami qarz summasi (masalan data.totalDebt)
+    cases-path: ${APP_MIB_CASES_PATH:}          # javobdagi ijro ishlari massivi (masalan data.cases)
+    message-path: ${APP_MIB_MESSAGE_PATH:}
+    not-found-means-clear: ${APP_MIB_NOT_FOUND_CLEAR:true}  # 404 — mijoz bo'yicha ijro ishi yo'q
   telegram:
     bot-token: ${APP_TELEGRAM_BOT_TOKEN:}   # bo'sh bo'lsa Telegram xabarlari o'chiq
   jobs:
@@ -86,5 +100,7 @@ springdoc:
     enabled: true
 
 app:
+  mib:
+    provider: ${APP_MIB_PROVIDER:stub}
   bootstrap-admin:
     password: ${APP_ADMIN_PASSWORD:admin123}
