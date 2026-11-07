@@ -1,7 +1,7 @@
 name: Demo ma'lumotlar
 
 # Qo'lda: Actions -> "Demo ma'lumotlar" -> Run workflow.
-#   seed   — 40 ta namoyish shartnomasi (oxirgi 6 oy, ~100 mln so'm) yuklaydi
+#   seed   — barcha bo'limlar uchun namoyish ma'lumotlari (idempotent: qayta ishga tushirish xavfsiz)
 #   remove — faqat shu demo ma'lumotlarni o'chiradi (haqiqiy ma'lumotlarga tegmaydi)
 on:
   workflow_dispatch:

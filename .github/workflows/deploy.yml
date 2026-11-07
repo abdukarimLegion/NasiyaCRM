@@ -102,9 +102,10 @@ jobs:
         env:
           ENV_FILE: ${{ secrets.ENV_FILE }}
         run: |
-          sshpass -e ssh vps "mkdir -p '$DEPLOY_PATH/deploy' '$DEPLOY_PATH/backups'"
+          sshpass -e ssh vps "mkdir -p '$DEPLOY_PATH/deploy' '$DEPLOY_PATH/deploy/seed' '$DEPLOY_PATH/backups'"
           sshpass -e scp docker-compose.prod.yml "vps:$DEPLOY_PATH/"
-          sshpass -e scp deploy/backup.sh deploy/restore.sh deploy/remote-deploy.sh "vps:$DEPLOY_PATH/deploy/"
+          sshpass -e scp deploy/backup.sh deploy/restore.sh deploy/remote-deploy.sh deploy/seed-demo.sh "vps:$DEPLOY_PATH/deploy/"
+          sshpass -e scp deploy/seed/demo_seed.sql deploy/seed/demo_remove.sql "vps:$DEPLOY_PATH/deploy/seed/"
           # ENV_FILE secret berilgan bo'lsa, serverdagi .env shu bilan almashtiriladi
           if [ -n "$ENV_FILE" ]; then
             printf '%s\n' "$ENV_FILE" | sshpass -e ssh vps \
@@ -123,4 +124,5 @@ jobs:
              BACKEND_IMAGE=$(printf %q "$BACKEND_IMAGE") \
              FRONTEND_IMAGE=$(printf %q "$FRONTEND_IMAGE") \
              GHCR_USER=$(printf %q "${{ github.actor }}") \
+             SEED_DEMO=$(printf %q "${{ vars.SEED_DEMO || '0' }}") \
              bash $(printf %q "$DEPLOY_PATH/deploy/remote-deploy.sh")"
