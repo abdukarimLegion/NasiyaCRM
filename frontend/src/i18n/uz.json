@@ -421,5 +421,8 @@
   "usedMonthly": "Mavjud oylik to'lovlar",
   "freeMonthly": "Bo'sh oylik sig'im",
   "overCapacity": "Oylik to'lov ({{monthly}}) mijozning bo'sh to'lov sig'imidan ({{free}}) katta. Boshlang'ich to'lovni oshiring yoki muddatni uzaytiring.",
+  "limitOverride": "Administrator sifatida limitdan oshishga ruxsat berish",
+  "overrideReason": "Limitdan oshish sababi",
+  "downPaymentMethod": "Boshlang'ich to'lov usuli",
   "delay": "Kechikish"
 }

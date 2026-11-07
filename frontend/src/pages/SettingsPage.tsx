@@ -73,13 +73,14 @@ function UsersCard() {
       <CardHead title={t('users')} right={<Btn size="sm" icon="plus" onClick={() => setEdit('new')}>{t('addUser')}</Btn>} />
       <div className="table-wrap">
         <table className="tbl">
-          <thead><tr><th>{t('fio')}</th><th>{t('username')}</th><th>{t('role')}</th></tr></thead>
+          <thead><tr><th>{t('fio')}</th><th>{t('username')}</th><th>{t('role')}</th><th>{t('status')}</th></tr></thead>
           <tbody>
             {users.data?.map((u) => (
               <tr key={u.id} onClick={() => setEdit(u)}>
                 <td className="cell-main"><b>{u.fullName}</b></td>
                 <td className="mono" data-label={t('username')}>{u.username}</td>
                 <td data-label={t('role')}>{t(`r_${u.role}`)}</td>
+                <td data-label={t('status')}>{u.active ? t('active') : t('inactive')}</td>
               </tr>
             ))}
           </tbody>
@@ -96,7 +97,7 @@ function UserModal({ user, onClose }: { user: UserView | null; onClose: () => vo
   const [username, setUsername] = useState(user?.username ?? '');
   const [fullName, setFullName] = useState(user?.fullName ?? '');
   const [role, setRole] = useState<Role>(user?.role ?? 'CREDIT_OFFICER');
-  const [active, setActive] = useState(true);
+  const [active, setActive] = useState(user?.active ?? true);
   const [password, setPassword] = useState('');
   const save = useMutation({
     mutationFn: () => (user

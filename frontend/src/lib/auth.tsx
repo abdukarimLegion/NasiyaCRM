@@ -44,7 +44,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     hasRole: (...roles) => !!user && roles.includes(user.role),
   }), [user, ready, login, logout]);
 
-  // @ts-ignore
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

@@ -25,6 +25,7 @@ export interface UserView {
   username: string;
   fullName: string;
   role: Role;
+  active: boolean;
 }
 
 export interface LoginResponse {

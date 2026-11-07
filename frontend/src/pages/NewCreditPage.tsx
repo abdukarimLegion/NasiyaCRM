@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, qs } from '../api/client';
 import type {
-  ClientListItem, ContractDetails, CreditLimitResult, Factor, Page, Product, Quote, QuoteRequest, ScoringRequest, ScoringResult, StopFactor,
+  ClientListItem, ContractDetails, CreditLimitResult, Factor, Page, PaymentMethod, Product, Quote, QuoteRequest, ScoringRequest, ScoringResult, StopFactor,
 } from '../api/types';
 import { Avatar, Badge, Btn, Card, CardHead, ErrorBox, Field, Gauge, Icon } from '../components/ui';
 import { useAuth } from '../lib/auth';
@@ -16,6 +16,7 @@ const FACTORS: { key: Factor; max: number }[] = [
   { key: 'HISTORY', max: 20 }, { key: 'DISCIPLINE', max: 15 }, { key: 'GUARANTOR', max: 10 },
 ];
 const MANUAL_STOPS: StopFactor[] = ['BLACKLIST', 'FRAUD', 'COURT'];
+const METHODS: PaymentMethod[] = ['CASH', 'CARD', 'PAYME', 'CLICK', 'UZUM', 'BANK_TRANSFER'];
 
 export default function NewCreditPage() {
   const { t, i18n } = useTranslation();
@@ -60,6 +61,9 @@ export default function NewCreditPage() {
   const [termMonths, setTermMonths] = useState(12);
   const [markupPct, setMarkupPct] = useState<number | undefined>();
   const [downPayment, setDownPayment] = useState(0);
+  const [downPaymentMethod, setDownPaymentMethod] = useState<PaymentMethod>('CASH');
+  const [limitOverride, setLimitOverride] = useState(false);
+  const [overrideReason, setOverrideReason] = useState('');
   const [guarantorName, setGuarantorName] = useState('');
   const [guarantorPhone, setGuarantorPhone] = useState('');
 
@@ -84,17 +88,22 @@ export default function NewCreditPage() {
     mutationFn: () => api.post<ContractDetails>('/api/contracts', {
       clientId, terms: quoteReq, scoring: scoringReq,
       guarantorName: guarantorName || undefined, guarantorPhone: guarantorPhone || undefined,
+      downPaymentMethod,
+      limitOverride: limitOverride || undefined,
+      overrideReason: limitOverride ? (overrideReason || undefined) : undefined,
     }),
     onSuccess: (c) => nav(`/contracts/${c.id}`),
   });
 
   const client = useMemo(() => clients.data?.content.find((c) => c.id === clientId), [clients.data, clientId]);
   const decision = scoring.data?.decision;
+  const overCapacity = !!limit.data && !!quote.data && quote.data.monthlyPayment > limit.data.freeMonthly;
+  const overrideOk = !overCapacity || (hasRole('ADMIN') && limitOverride && overrideReason.trim().length > 0);
   const canNext = [
     clientId != null,
     !!scoring.data,
     decision === 'APPROVED' || (decision === 'REVIEW' && hasRole('ADMIN')),
-    !!quote.data,
+    !!quote.data && overrideOk,
     true,
   ][step];
 
@@ -232,6 +241,12 @@ export default function NewCreditPage() {
                     <input className="input" type="number" min={0} value={downPayment}
                       onChange={(e) => setDownPayment(Number(e.target.value))} />
                   </Field>
+                  <Field label={t('downPaymentMethod')}>
+                    <select className="select" value={downPaymentMethod}
+                      onChange={(e) => setDownPaymentMethod(e.target.value as PaymentMethod)}>
+                      {METHODS.map((m) => <option key={m} value={m}>{t(`m_${m}`)}</option>)}
+                    </select>
+                  </Field>
                   <div className="form-grid">
                     <Field label={t('guarantorName')}>
                       <input className="input" value={guarantorName} onChange={(e) => setGuarantorName(e.target.value)} />
@@ -246,11 +261,28 @@ export default function NewCreditPage() {
             </div>
           </Card>
           <div className="col" style={{ gap: 16, minWidth: 0 }}>
-            {limit.data && quote.data && quote.data.monthlyPayment > limit.data.freeMonthly && (
+            {overCapacity && limit.data && quote.data && (
               <div className="stage-tip st-warn">
                 <Icon name="alert" size={18} />
                 <span>{t('overCapacity', { monthly: fmtSom(quote.data.monthlyPayment, lang), free: fmtSom(limit.data.freeMonthly, lang) })}</span>
               </div>
+            )}
+            {overCapacity && hasRole('ADMIN') && (
+              <Card>
+                <div className="card-pad col" style={{ gap: 10 }}>
+                  <label className="check-row">
+                    <input type="checkbox" checked={limitOverride}
+                      onChange={(e) => setLimitOverride(e.target.checked)} />
+                    {t('limitOverride')}
+                  </label>
+                  {limitOverride && (
+                    <Field label={t('overrideReason')} req>
+                      <input className="input" value={overrideReason}
+                        onChange={(e) => setOverrideReason(e.target.value)} />
+                    </Field>
+                  )}
+                </div>
+              </Card>
             )}
             {limit.data && <LimitCard l={limit.data} compact />}
             <QuoteCard quote={quote.data} />
