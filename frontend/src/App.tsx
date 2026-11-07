@@ -78,6 +78,7 @@ export default function App() {
         <Route path="kpi" element={<KpiPage />} />
         <Route path="analytics" element={<Guard perms={['ANALYTICS_VIEW']}><AnalyticsPage /></Guard>} />
         <Route path="forecast" element={<Guard perms={['FORECAST_VIEW']}><ForecastPage /></Guard>} />
+        <Route path="simulator" element={<Guard perms={['FORECAST_VIEW']}><ForecastPage mode="simulator" /></Guard>} />
         <Route path="branches" element={<Guard perms={['BRANCHES_VIEW']}><BranchesPage /></Guard>} />
         <Route path="settings/:tab?" element={<Guard perms={['SETTINGS_EDIT', 'USERS_MANAGE', 'DOCUMENTS_EDIT']}><SettingsPage /></Guard>} />
         <Route path="*" element={<Navigate to="/" replace />} />

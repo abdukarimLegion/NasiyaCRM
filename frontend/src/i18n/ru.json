@@ -985,5 +985,14 @@
   "monthlyObligation": "Ежемесячное обязательство",
   "maxOverdueDays": "Макс. просрочка, дн.",
   "hasOverdue": "Есть просрочка",
-  "legalPackage": "Судебный пакет (ZIP)"
+  "legalPackage": "Судебный пакет (ZIP)",
+  "simulatorNav": "What-If симулятор",
+  "simTitle": "What-If симулятор",
+  "simSub": "Сценарии по наценке, первоначальному взносу, стрессу, привлечённым средствам и партнёрскому каналу",
+  "collectionOverviewNav": "Общее взыскание",
+  "softNav": "Soft (1–30 дней)",
+  "hardNav": "Hard (31–90 дней)",
+  "legalNav": "Legal (суд и МИБ)",
+  "usersNav": "Пользователи",
+  "rolesNav": "Роли и права"
 }
