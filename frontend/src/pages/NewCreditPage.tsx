@@ -9,6 +9,7 @@ import type {
 } from '../api/types';
 import { Avatar, Badge, Btn, Card, CardHead, ErrorBox, Field, Gauge, Icon } from '../components/ui';
 import VerificationPanel from '../components/VerificationPanel';
+import ExternalLimitsPanel from '../components/ExternalLimitsPanel';
 import MibPanel from '../components/MibPanel';
 import { CreditReportsCard } from './ClientDetailPage';
 import { useAuth } from '../lib/auth';
@@ -67,7 +68,7 @@ export default function NewCreditPage() {
     enabled: clientId != null && !!scoring.data,
   });
 
-  // 4. murobaha
+  // 4. hisob-kitob
   const products = useQuery({ queryKey: ['products', 'active'], queryFn: () => api.get<Product[]>('/api/products?activeOnly=true') });
   const [cart, setCart] = useState<CartItem[]>([]);
   const [addId, setAddId] = useState<number | null>(null);
@@ -212,6 +213,7 @@ export default function NewCreditPage() {
       )}
       {step === 0 && clientId != null && <div style={{ marginTop: 16 }}><VerificationPanel clientId={clientId} /></div>}
       {step === 0 && clientId != null && <div style={{ marginTop: 16 }}><MibPanel clientId={clientId} auto /></div>}
+      {step === 0 && clientId != null && <div style={{ marginTop: 16 }}><ExternalLimitsPanel key={clientId} clientId={clientId} /></div>}
       {step === 0 && clientId != null && <CreditReportsCard clientId={clientId} />}
 
       {step === 1 && (

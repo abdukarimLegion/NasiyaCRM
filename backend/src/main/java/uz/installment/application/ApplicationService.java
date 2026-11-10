@@ -123,6 +123,7 @@ public class ApplicationService {
     @Transactional
     public Application approve(Long id, AuthUser me) {
         Application a = applications.findForUpdate(id).orElseThrow(() -> new NotFoundException("Ariza", id));
+        checkScope(a, me);
         if (a.getStatus() != ApplicationStatus.PENDING) {
             throw new BusinessException("APPLICATION_STATE", "Faqat kutilayotgan arizani tasdiqlash mumkin");
         }
@@ -133,6 +134,7 @@ public class ApplicationService {
     @Transactional
     public Application reject(Long id, String reason, AuthUser me) {
         Application a = applications.findForUpdate(id).orElseThrow(() -> new NotFoundException("Ariza", id));
+        checkScope(a, me);
         if (a.getStatus() != ApplicationStatus.PENDING && a.getStatus() != ApplicationStatus.APPROVED) {
             throw new BusinessException("APPLICATION_STATE", "Bu arizani rad etib bo'lmaydi");
         }
@@ -147,6 +149,7 @@ public class ApplicationService {
     @Transactional
     public Application toContract(Long id, AuthUser me) {
         Application a = applications.findForUpdate(id).orElseThrow(() -> new NotFoundException("Ariza", id));
+        checkScope(a, me);
         if (a.getStatus() != ApplicationStatus.APPROVED) {
             throw new BusinessException("APPLICATION_STATE", "Shartnoma faqat tasdiqlangan arizadan tuziladi");
         }
@@ -168,6 +171,7 @@ public class ApplicationService {
     @Transactional
     public Application handover(Long id, String partnerCode, String txId, String notes, AuthUser me) {
         Application a = applications.findForUpdate(id).orElseThrow(() -> new NotFoundException("Ariza", id));
+        checkScope(a, me);
         if (a.getStatus() != ApplicationStatus.APPROVED) {
             throw new BusinessException("APPLICATION_STATE", "Hamkorga faqat tasdiqlangan ariza topshiriladi");
         }
@@ -213,11 +217,16 @@ public class ApplicationService {
     @Transactional(readOnly = true)
     public Application get(Long id, AuthUser me) {
         Application a = applications.findDetailed(id).orElseThrow(() -> new NotFoundException("Ariza", id));
+        checkScope(a, me);
+        return a;
+    }
+
+    /** Boshqa filial arizasi — faqat ALL_BRANCHES ruxsati bilan ko'rinadi va boshqariladi. */
+    static void checkScope(Application a, AuthUser me) {
         Long scope = me.branchScope(null);
         if (scope != null && (a.getBranch() == null || !scope.equals(a.getBranch().getId()))) {
-            throw new NotFoundException("Ariza", id);
+            throw new NotFoundException("Ariza", a.getId());
         }
-        return a;
     }
 
     @Transactional(readOnly = true)

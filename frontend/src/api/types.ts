@@ -788,6 +788,27 @@ export interface MibState {
   history: MibCheck[];
 }
 
+export type ExternalLimitStatus = 'AVAILABLE' | 'NO_LIMIT' | 'NOT_REGISTERED' | 'ERROR';
+
+export interface ExternalLimit {
+  provider: string;
+  providerName: string;
+  status: ExternalLimitStatus;
+  total: number;
+  used: number;
+  available: number;
+  maxTermMonths?: number;
+  message?: string;
+}
+
+export interface ExternalLimitReport {
+  clientId: number;
+  mock: boolean;
+  checkedAt: string;
+  totalAvailable: number;
+  items: ExternalLimit[];
+}
+
 export interface VerificationStatus {
   mode: VerificationMode;
   minFaceMatchPct: number;

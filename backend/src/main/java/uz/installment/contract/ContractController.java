@@ -73,7 +73,7 @@ public class ContractController {
 
     @PostMapping("/{id}/cancel")
     @PreAuthorize("hasAuthority('CONTRACTS_CANCEL')")
-    public ContractDetails cancel(@PathVariable Long id) {
-        return service.cancel(id);
+    public ContractDetails cancel(@PathVariable Long id, @AuthenticationPrincipal AuthUser me) {
+        return service.cancel(id, me);
     }
 }

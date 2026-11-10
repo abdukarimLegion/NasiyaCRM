@@ -59,6 +59,9 @@ app:
     cases-path: ${APP_MIB_CASES_PATH:}          # javobdagi ijro ishlari massivi (masalan data.cases)
     message-path: ${APP_MIB_MESSAGE_PATH:}
     not-found-means-clear: ${APP_MIB_NOT_FOUND_CLEAR:true}  # 404 — mijoz bo'yicha ijro ishi yo'q
+  # Tashqi nasiya platformalaridagi limitni JShShIR bo'yicha tekshirish (faqat ma'lumot uchun)
+  limits:
+    provider: ${APP_LIMITS_PROVIDER:mock}   # mock = namoyish ma'lumotlari (haqiqiy integratsiya hali yo'q)
   telegram:
     bot-token: ${APP_TELEGRAM_BOT_TOKEN:}   # bo'sh bo'lsa Telegram xabarlari o'chiq
   jobs:
