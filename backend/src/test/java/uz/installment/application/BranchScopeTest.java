@@ -61,7 +61,7 @@ class BranchScopeTest {
         assertThatThrownBy(() -> service.approve(10L, otherBranchManager)).isInstanceOf(NotFoundException.class);
         assertThatThrownBy(() -> service.reject(10L, "x", otherBranchManager)).isInstanceOf(NotFoundException.class);
         assertThatThrownBy(() -> service.toContract(10L, otherBranchManager)).isInstanceOf(NotFoundException.class);
-        assertThatThrownBy(() -> service.handover(10L, "ALIF", null, null, otherBranchManager))
+        assertThatThrownBy(() -> service.handover(10L, "ALIF", null, null, null, null, otherBranchManager))
                 .isInstanceOf(NotFoundException.class);
         assertThat(application.getStatus()).isEqualTo(ApplicationStatus.PENDING);
     }

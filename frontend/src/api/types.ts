@@ -379,6 +379,8 @@ export interface ApplicationView {
   contractNo?: string;
   createdAt: string;
   scoreDetails?: { stopFactors?: StopFactor[]; points?: Record<Factor, number> };
+  partnerNotes?: string;
+  partnerSerials?: { name: string; serial: string }[];
   provider: string;
   partnerName?: string;
   partnerTxId?: string;
@@ -788,6 +790,47 @@ export interface MibState {
   history: MibCheck[];
 }
 
+export interface ApplicationDraft {
+  id: number;
+  clientId: number;
+  clientName: string;
+  clientPhone: string;
+  clientPinfl?: string;
+  step: number;
+  summary?: string;
+  amount?: number;
+  officerId: number;
+  officerName: string;
+  branchId?: number;
+  branchName?: string;
+  createdAt: string;
+  updatedAt: string;
+  payload?: Record<string, unknown>;
+}
+
+/** Hamkor tizimida ochilgan buyurtma: hamkor mijozga tasdiqlash kodi yuboradi. */
+export interface PartnerOrder {
+  partnerCode: string;
+  partnerName: string;
+  transactionId: string;
+  mock: boolean;
+  message?: string;
+}
+
+export interface DailyPlan {
+  sales: number;
+  contracts: number;
+  collection: number;
+}
+
+export interface DailyMonitor {
+  date: string;
+  branchId?: number;
+  plan: DailyPlan;
+  actual: DailyPlan;
+  dayProgressPct: number;
+}
+
 export type ExternalLimitStatus = 'AVAILABLE' | 'NO_LIMIT' | 'NOT_REGISTERED' | 'ERROR';
 
 export interface ExternalLimit {
@@ -798,6 +841,7 @@ export interface ExternalLimit {
   used: number;
   available: number;
   maxTermMonths?: number;
+  mock: boolean;
   message?: string;
 }
 

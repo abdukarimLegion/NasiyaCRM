@@ -50,6 +50,7 @@ public class ApplicationService {
     private final VerificationService verification;
     private final uz.installment.mib.MibService mib;
     private final PartnerRepository partners;
+    private final uz.installment.partner.gateway.PartnerGateways gateways;
     private final NamedParameterJdbcTemplate jdbc;
 
     /**
@@ -169,9 +170,52 @@ public class ApplicationService {
      * chiqariladi, komissiya yoziladi. Hamkor shartlari (muddat, boshlang'ich to'lov, limit) tekshiriladi.
      */
     @Transactional
-    public Application handover(Long id, String partnerCode, String txId, String notes, AuthUser me) {
+    public Application handover(Long id, String partnerCode, String txId, String smsCode, String notes,
+                                java.util.List<Map<String, Object>> serials, AuthUser me) {
         Application a = applications.findForUpdate(id).orElseThrow(() -> new NotFoundException("Ariza", id));
         checkScope(a, me);
+        PartnerDeal deal = partnerDeal(a, partnerCode);
+        Partner p = deal.partner();
+        var gateway = gateways.forCode(p.getCode());
+        boolean hasCode = smsCode != null && !smsCode.isBlank();
+        // Haqiqiy integratsiyada hamkor tasdig'isiz tovar topshirilmaydi; mock'da kod ixtiyoriy
+        if (!gateway.isMock() && !hasCode) {
+            throw new BusinessException("PARTNER_CODE_REQUIRED", "Hamkor yuborgan tasdiqlash kodini kiriting");
+        }
+        if (hasCode) {
+            if (txId == null || txId.isBlank()) {
+                throw new BusinessException("PARTNER_TX_REQUIRED", "Avval hamkor tizimida buyurtma oching");
+            }
+            var res = gateway.confirmOrder(p.getCode(), txId.trim(), smsCode);
+            if (res.status() != uz.installment.partner.gateway.PartnerGateway.OrderStatus.CONFIRMED) {
+                throw new BusinessException("PARTNER_CONFIRM_FAILED", p.getName() + ": "
+                        + (res.message() == null ? "savdo tasdiqlanmadi" : res.message()));
+            }
+        }
+        contracts.reserveStock(deal.request().terms());
+        a.setProvider(p.getCode());
+        a.setPartner(p);
+        a.setPartnerTxId(txId == null || txId.isBlank() ? null : txId.trim());
+        a.setPartnerNotes(notes);
+        a.setPartnerSerials(serials == null || serials.isEmpty() ? null : serials);
+        var offer = deal.offer();
+        a.setPartnerHandoverAt(Instant.now());
+        a.setPartnerCommission(offer.commission());
+        a.setStatus(ApplicationStatus.PARTNER);
+        return applications.findDetailed(id).orElseThrow();
+    }
+
+    /** Hamkor tizimida buyurtma ochish natijasi (mijozga tasdiqlash kodi yuboriladi). */
+    public record PartnerOrder(String partnerCode, String partnerName, String transactionId, boolean mock,
+                               String message) {
+    }
+
+    private record PartnerDeal(Partner partner, CreateContractRequest request, ContractService.Prepared prepared,
+                               PartnerLimitCalculator.Offer offer) {
+    }
+
+    /** Ariza hamkorga topshirilishi mumkinmi: holat, hamkor faolligi va hamkor shartlari (muddat, boshlang'ich to'lov, limit). */
+    private PartnerDeal partnerDeal(Application a, String partnerCode) {
         if (a.getStatus() != ApplicationStatus.APPROVED) {
             throw new BusinessException("APPLICATION_STATE", "Hamkorga faqat tasdiqlangan ariza topshiriladi");
         }
@@ -189,15 +233,31 @@ public class ApplicationService {
             throw new BusinessException("PARTNER_" + offer.reason(),
                     p.getName() + " shartlariga mos kelmaydi (" + offer.reason() + ")");
         }
-        contracts.reserveStock(req.terms());
-        a.setProvider(p.getCode());
-        a.setPartner(p);
-        a.setPartnerTxId(txId);
-        a.setPartnerNotes(notes);
-        a.setPartnerHandoverAt(Instant.now());
-        a.setPartnerCommission(offer.commission());
-        a.setStatus(ApplicationStatus.PARTNER);
-        return applications.findDetailed(id).orElseThrow();
+        return new PartnerDeal(p, req, prep, offer);
+    }
+
+    /**
+     * Hamkor tizimida savdo buyurtmasini ochadi: hamkor mijozga tasdiqlash kodi yuboradi. Ariza holati
+     * o'zgarmaydi — tovar {@link #handover} da kod tasdiqlangach topshiriladi.
+     */
+    @Transactional
+    public PartnerOrder partnerOrder(Long id, String partnerCode, AuthUser me) {
+        Application a = applications.findForUpdate(id).orElseThrow(() -> new NotFoundException("Ariza", id));
+        checkScope(a, me);
+        PartnerDeal deal = partnerDeal(a, partnerCode);
+        Partner p = deal.partner();
+        var gateway = gateways.forCode(p.getCode());
+        var q = deal.prepared().quote();
+        var res = gateway.createOrder(new uz.installment.partner.gateway.PartnerGateway.OrderRequest(p.getCode(),
+                a.getClient().getPinfl(), a.getClient().getPhone(), a.getApplicationNo(), q.costPrice(),
+                q.downPayment(), q.termMonths(), deal.prepared().lines().stream()
+                .map(l -> new uz.installment.partner.gateway.PartnerGateway.OrderItem(l.product().getName(),
+                        l.quantity(), l.unitPrice())).toList()));
+        if (res.status() != uz.installment.partner.gateway.PartnerGateway.OrderStatus.CODE_SENT) {
+            throw new BusinessException("PARTNER_ORDER_FAILED", p.getName() + ": "
+                    + (res.message() == null ? "buyurtma ochilmadi" : res.message()));
+        }
+        return new PartnerOrder(p.getCode(), p.getName(), res.transactionId(), gateway.isMock(), res.message());
     }
 
     @Transactional(readOnly = true)
