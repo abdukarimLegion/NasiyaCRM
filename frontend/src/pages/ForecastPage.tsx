@@ -9,11 +9,20 @@ import { Legend, LineChart, type Series } from '../components/viz';
 import { useAuth } from '../lib/auth';
 import { useBranch } from '../lib/branch';
 import { fmtMln, fmtMonth } from '../lib/format';
+import { downloadCsv } from '../lib/csv';
 
 const INSIGHT_ICON: Record<string, IconName> = {
   ON_TIME_RATE: 'clock', ARREARS_SHARE: 'alert', NEGATIVE_CASH: 'wallet', PEAK_MONTH: 'trend',
   HIGH_SEASON: 'calendar', NO_HISTORY: 'spark',
 };
+
+/** Tayyor stsenariylar: hamkor ulushi, tashqi bosim darajasi va savdo o'sishi. */
+const SIM_PRESETS: { key: string; partnerShare: number; stress: StressLevel; growth: number }[] = [
+  { key: 'partnerBoom', partnerShare: 60, stress: 'LOW', growth: 10 },
+  { key: 'balanced', partnerShare: 35, stress: 'LOW', growth: 0 },
+  { key: 'internalOnly', partnerShare: 0, stress: 'LOW', growth: 0 },
+  { key: 'conservative', partnerShare: 20, stress: 'HIGH', growth: -10 },
+];
 
 /** mode="forecast" — asosiy prognoz; mode="simulator" — What-If parametrlari, stress-test va moliyalashtirish. */
 export default function ForecastPage({ mode = 'forecast' }: { mode?: 'forecast' | 'simulator' }) {
@@ -92,6 +101,17 @@ export default function ForecastPage({ mode = 'forecast' }: { mode?: 'forecast' 
           ]} />
         </div>
       </div>
+
+      {sim && (
+        <div className="seg" style={{ flexWrap: 'wrap', marginBottom: 16 }}>
+          {SIM_PRESETS.map((p) => (
+            <button key={p.key} data-on={partnerShare === p.partnerShare && stress === p.stress && growth === p.growth}
+              onClick={() => { setPartnerShare(p.partnerShare); setStress(p.stress); setGrowth(p.growth); }}>
+              {t(`simPreset_${p.key}`)}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="fc-top">
         {sim && (
@@ -211,7 +231,11 @@ export default function ForecastPage({ mode = 'forecast' }: { mode?: 'forecast' 
       <SeasonalityCard key={data.seasonality.join(',')} data={data} editable={can('SETTINGS_EDIT')} />
 
       <Card className="block">
-        <CardHead title={t('fcTable')} sub={unit} />
+        <CardHead title={t('fcTable')} sub={unit}
+          right={<Btn size="sm" variant="soft" icon="download" onClick={() => downloadCsv(`forecast_${data.points[0]?.month ?? ''}.csv`,
+            [t('month'), t('fcSeason'), t('fcScheduled'), t('fcFromSchedule'), t('fcFromArrears'), t('fcNewSales'), t('fcFromNew'), t('fcInflow'), t('fcProfit'), t('fcNetCash')],
+            data.points.map((p) => [p.month, p.seasonality, p.scheduled, p.fromSchedule, p.fromArrears, p.newSales, p.fromNewSales, p.inflow, p.profit, p.netCash]))}>
+            {t('pnlCsv')}</Btn>} />
         <div className="table-wrap">
           <table className="tbl">
             <thead><tr>

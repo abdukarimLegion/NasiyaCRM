@@ -44,6 +44,7 @@ public class LegalController {
     private final CollectionActionRepository actions;
     private final NamedParameterJdbcTemplate jdbc;
     private final Clock clock;
+    private final CourtFilingGateway courtFiling;
 
     public record CreateCase(@NotNull Long contractId, @Size(max = 200) String courtName,
                              @Size(max = 1000) String note) {
@@ -61,7 +62,17 @@ public class LegalController {
                           BigDecimal remaining, BigDecimal paidSinceOpened, int daysLate, String courtName,
                           String caseNo, LocalDate filedAt, LocalDate hearingAt, LocalDate decisionAt,
                           String enforcementNo, String note, Long assignedUserId, String assignedUserName,
-                          String branchName, Instant createdAt, Instant updatedAt) {
+                          String branchName, Instant createdAt, Instant updatedAt, BigDecimal stateFee,
+                          LocalDate arrestRequestedAt, String arrestNote, Instant esudSubmittedAt, String esudRef) {
+    }
+
+    /** Da'vo bo'yicha davlat boji stavkasi (da'vo summasidan). */
+    static final BigDecimal STATE_FEE_RATE = new BigDecimal("0.04");
+
+    public record ArrestRequest(@Size(max = 500) String note) {
+    }
+
+    public record EsudResult(String reference, boolean mock, String message) {
     }
 
     @GetMapping
@@ -96,7 +107,11 @@ public class LegalController {
                 rs.getObject("decision_at", LocalDate.class), rs.getString("enforcement_no"), rs.getString("note"),
                 rs.getObject("assigned_user_id", Long.class), rs.getString("assigned_name"),
                 rs.getString("branch_name"), rs.getTimestamp("created_at").toInstant(),
-                rs.getTimestamp("updated_at").toInstant()));
+                rs.getTimestamp("updated_at").toInstant(),
+                rs.getBigDecimal("claim_amount").multiply(STATE_FEE_RATE).setScale(0, java.math.RoundingMode.HALF_UP),
+                rs.getObject("arrest_requested_at", LocalDate.class), rs.getString("arrest_note"),
+                rs.getTimestamp("esud_submitted_at") == null ? null : rs.getTimestamp("esud_submitted_at").toInstant(),
+                rs.getString("esud_ref")));
     }
 
     /** Sud ishini ochish: da'vo summasi — hozirgi qolgan qarz (jarimasiz). */
@@ -150,6 +165,46 @@ public class LegalController {
         lc.setAssignedUserId(req.assignedUserId());
         if (prev != req.status()) {
             log(c.getId(), req.status().name(), req.note(), me);
+        }
+        return lc;
+    }
+
+    /** Qarzdorning bank hisoblariga taqiq (arest) qo'yish so'rovi yuborilganini qayd etadi. */
+    @PostMapping("/{id}/arrest")
+    @PreAuthorize("hasAuthority('COLLECTION_LEGAL')")
+    @Transactional
+    public void arrest(@PathVariable Long id, @Valid @RequestBody ArrestRequest req, @AuthenticationPrincipal AuthUser me) {
+        LegalCase lc = scopedCase(id, me);
+        jdbc.update("update legal_cases set arrest_requested_at = :d, arrest_note = :n, updated_at = now() where id = :id",
+                new MapSqlParameterSource().addValue("d", LocalDate.now(clock)).addValue("n", blank(req.note()))
+                        .addValue("id", id));
+        log(lc.getContractId(), "ARREST", req.note(), me);
+    }
+
+    /** Da'vo arizasini elektron sud (E-SUD) orqali topshiradi — hozircha {@link MockCourtFilingGateway}. */
+    @PostMapping("/{id}/esud")
+    @PreAuthorize("hasAuthority('COLLECTION_LEGAL')")
+    @Transactional
+    public EsudResult esud(@PathVariable Long id, @AuthenticationPrincipal AuthUser me) {
+        LegalCase lc = scopedCase(id, me);
+        Contract c = contracts.findWithSchedule(lc.getContractId()).orElseThrow();
+        CourtFilingGateway.Filing f = courtFiling.submit(c.getContractNo(), c.getClient().getPinfl(),
+                lc.getClaimAmount(), lc.getCourtName());
+        if (!f.accepted()) {
+            throw new BusinessException("ESUD_FAILED", f.message() == null ? "E-SUD arizani qabul qilmadi" : f.message());
+        }
+        jdbc.update("update legal_cases set esud_submitted_at = now(), esud_ref = :r, updated_at = now() where id = :id",
+                new MapSqlParameterSource().addValue("r", f.reference()).addValue("id", id));
+        log(lc.getContractId(), "ESUD", f.reference(), me);
+        return new EsudResult(f.reference(), courtFiling.isMock(), f.message());
+    }
+
+    private LegalCase scopedCase(Long id, AuthUser me) {
+        LegalCase lc = cases.findById(id).orElseThrow(() -> new NotFoundException("Sud ishi", id));
+        Contract c = contracts.findWithSchedule(lc.getContractId()).orElseThrow();
+        ContractService.checkScope(c, me);
+        if (lc.getStatus() == LegalCase.Status.CLOSED) {
+            throw new BusinessException("LEGAL_CASE_CLOSED", "Sud ishi yopilgan");
         }
         return lc;
     }

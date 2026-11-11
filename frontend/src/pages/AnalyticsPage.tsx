@@ -6,6 +6,7 @@ import type { AnalyticsReport } from '../api/types';
 import { Badge, Card, CardHead, Empty, ErrorBox, Icon, Loading, Seg, Stat } from '../components/ui';
 import { Legend, LineChart, Progress, type Series } from '../components/viz';
 import { useBranch } from '../lib/branch';
+import PnlStatement from '../components/PnlStatement';
 import { fmtMln, fmtMonth } from '../lib/format';
 
 const AGING_COLOR: Record<string, string> = {
@@ -63,6 +64,8 @@ export default function AnalyticsPage() {
         <Stat icon="shield" tone="info" label={t('anEcl')} value={fmtMln(pnl.eclProvision, lang)}
           sub={<>{t('anAfterProvision')}: <b>{fmtMln(pnl.profitAfterProvision, lang)}</b></>} />
       </div>
+
+      <PnlStatement branchId={branch.param} />
 
       <Card className="block">
         <CardHead title={t('anDynamics')} sub={`${t('anDynamicsSub')} · ${unit}`} right={<Legend series={series} />} />

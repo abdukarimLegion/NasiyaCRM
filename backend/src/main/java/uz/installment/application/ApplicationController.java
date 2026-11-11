@@ -33,8 +33,16 @@ public class ApplicationController {
     public record RejectRequest(@Size(max = 500) String reason) {
     }
 
+    /** smsCode — hamkor mijozga yuborgan tasdiqlash kodi; serials — topshirilgan tovarlarning seriya raqami / IMEI. */
     public record HandoverRequest(@NotBlank String partnerCode, @Size(max = 100) String transactionId,
-                                  @Size(max = 500) String notes) {
+                                  @Size(max = 10) String smsCode, @Size(max = 500) String notes,
+                                  @Valid @Size(max = 60) java.util.List<SerialItem> serials) {
+    }
+
+    public record SerialItem(@NotBlank @Size(max = 200) String name, @Size(max = 60) String serial) {
+    }
+
+    public record PartnerOrderRequest(@NotBlank String partnerCode) {
     }
 
     public record ApplicationView(Long id, String applicationNo, Long clientId, String clientName, String clientPhone,
@@ -45,7 +53,8 @@ public class ApplicationController {
                                   Long officerId, String officerName, Long branchId, String branchName,
                                   String decidedByName, Instant decidedAt, Long contractId, String contractNo,
                                   Instant createdAt, Map<String, Object> scoreDetails, String provider, String partnerName,
-                                  String partnerTxId, BigDecimal partnerCommission, Instant partnerHandoverAt) {
+                                  String partnerTxId, BigDecimal partnerCommission, Instant partnerHandoverAt,
+                                  String partnerNotes, java.util.List<Map<String, Object>> partnerSerials) {
         static ApplicationView of(Application a) {
             return new ApplicationView(a.getId(), a.getApplicationNo(), a.getClient().getId(),
                     a.getClient().getFullName(), a.getClient().getPhone(), a.getItemsSummary(), a.getCostPrice(),
@@ -62,7 +71,7 @@ public class ApplicationController {
                     a.getContract() == null ? null : a.getContract().getContractNo(),
                     a.getCreatedAt(), a.getScoreDetails(), a.getProvider(),
                     a.getPartner() == null ? null : a.getPartner().getName(), a.getPartnerTxId(),
-                    a.getPartnerCommission(), a.getPartnerHandoverAt());
+                    a.getPartnerCommission(), a.getPartnerHandoverAt(), a.getPartnerNotes(), a.getPartnerSerials());
         }
     }
 
@@ -121,7 +130,19 @@ public class ApplicationController {
     public ApplicationView handover(@PathVariable Long id, @Valid @RequestBody HandoverRequest req,
                                     @AuthenticationPrincipal AuthUser me) {
         return ApplicationView.of(service.reload(
-                service.handover(id, req.partnerCode(), req.transactionId(), req.notes(), me).getId()));
+                service.handover(id, req.partnerCode(), req.transactionId(), req.smsCode(), req.notes(),
+                        req.serials() == null ? null : req.serials().stream()
+                                .filter(s -> s.serial() != null && !s.serial().isBlank())
+                                .map(s -> Map.<String, Object>of("name", s.name(), "serial", s.serial().trim()))
+                                .toList(), me).getId()));
+    }
+
+    /** Hamkor tizimida buyurtma ochadi — hamkor mijozga tasdiqlash kodi yuboradi (keyin /handover). */
+    @PostMapping("/{id}/partner-order")
+    @PreAuthorize("hasAuthority('CONTRACTS_CREATE')")
+    public ApplicationService.PartnerOrder partnerOrder(@PathVariable Long id, @Valid @RequestBody PartnerOrderRequest req,
+                                                        @AuthenticationPrincipal AuthUser me) {
+        return service.partnerOrder(id, req.partnerCode(), me);
     }
 
     @PostMapping("/{id}/contract")

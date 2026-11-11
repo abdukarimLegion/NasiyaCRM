@@ -8,6 +8,7 @@ import {
 } from '../components/ui';
 import { fmtMln } from '../lib/format';
 import { useBranch } from '../lib/branch';
+import DailyPlanCard from '../components/DailyPlanCard';
 
 type Kpis = Dashboard['kpis'];
 
@@ -99,6 +100,8 @@ export default function DashboardPage() {
         <Stat icon="clock" label={t('todayTomorrow')} value={`${k.todayPayments + k.tomorrowPayments} ${t('pcs')}`}
           sub={<>{t('today')}: <b>{k.todayPayments}</b> · {t('tomorrow')}: <b>{k.tomorrowPayments}</b></>} />
       </div>
+
+      <DailyPlanCard branchId={branch.param} />
 
       <Card className="block">
         <CardHead title={t('profitTitleLong')}

@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -83,7 +84,10 @@ public class UserController {
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('USERS_MANAGE')")
     @Transactional
-    public AuthController.UserView create(@Valid @RequestBody CreateUser req) {
+    public AuthController.UserView create(@Valid @RequestBody CreateUser req,
+                                          @AuthenticationPrincipal AuthUser me) {
+        guardAdminAccounts(me, null, req.role());
+        guardGrantedPermissions(me, req.permissions());
         if (users.existsByUsername(req.username().trim())) {
             throw new BusinessException("USERNAME_TAKEN", "Bu login band: " + req.username());
         }
@@ -110,6 +114,11 @@ public class UserController {
     public AuthController.UserView update(@PathVariable Long id, @Valid @RequestBody UpdateUser req,
                                           @AuthenticationPrincipal AuthUser me) {
         User u = users.findById(id).orElseThrow(() -> new NotFoundException("Foydalanuvchi", id));
+        guardAdminAccounts(me, u.getRole(), req.role());
+        if (!java.util.Objects.equals(req.permissions() == null ? null
+                : permissionsFor(req.role(), req.permissions()), u.getPermissions())) {
+            guardGrantedPermissions(me, req.permissions());
+        }
         if (u.getId().equals(me.id()) && (!req.active() || req.role() != u.getRole())) {
             throw new BusinessException("SELF_LOCK", "O'zingizning rolingizni o'zgartira yoki hisobingizni o'chira olmaysiz");
         }
@@ -134,6 +143,56 @@ public class UserController {
         return auth.view(u);
     }
 
+    public record BulkActive(boolean active) {
+    }
+
+    public record BulkResult(int changed) {
+    }
+
+    /** Barcha xodimlarni birdan faollashtirish yoki bloklash (administratorlar va o'zi bundan mustasno). */
+    @PostMapping("/bulk-active")
+    @PreAuthorize("hasAuthority('USERS_MANAGE')")
+    @Transactional
+    public BulkResult bulkActive(@RequestBody BulkActive req, @AuthenticationPrincipal AuthUser me) {
+        int changed = 0;
+        for (User u : users.findAll()) {
+            if (u.getRole().isAdmin() || u.getId().equals(me.id()) || u.isActive() == req.active()) {
+                continue;
+            }
+            u.setActive(req.active());
+            changed++;
+        }
+        audit.record(req.active() ? "USERS_ACTIVATE_ALL" : "USERS_BLOCK_ALL", "USER", null, Map.of("changed", changed));
+        access.invalidateAll();
+        return new BulkResult(changed);
+    }
+
+    /**
+     * Xodimni tizimdan o'chirish. Faqat hali hech qanday yozuvi (shartnoma, to'lov, harakat ...) bo'lmagan xodim
+     * o'chiriladi; tarixi bor xodim o'chirilmaydi — uni bloklash kerak (hisobotlar buzilmasligi uchun).
+     */
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('USERS_MANAGE')")
+    @Transactional
+    public void delete(@PathVariable Long id, @AuthenticationPrincipal AuthUser me) {
+        User u = users.findById(id).orElseThrow(() -> new NotFoundException("Foydalanuvchi", id));
+        if (u.getId().equals(me.id())) {
+            throw new BusinessException("SELF_LOCK", "O'zingizni o'chira olmaysiz");
+        }
+        guardAdminAccounts(me, u.getRole(), u.getRole());
+        String username = u.getUsername();
+        try {
+            users.delete(u);
+            users.flush();
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new BusinessException("USER_HAS_HISTORY",
+                    "Bu xodim nomidan yozuvlar mavjud (shartnoma, to'lov yoki harakatlar) — o'chirib bo'lmaydi, uni bloklang");
+        }
+        audit.record("USER_DELETE", "USER", id, Map.of("username", username));
+        access.invalidate(id);
+    }
+
     private void applyProfile(User u, Profile p) {
         if (p == null) {
             return;
@@ -150,6 +209,29 @@ public class UserController {
         u.setEmail(blankToNull(p.email()));
         u.setAllowNasiya(p.allowNasiya());
         u.setNasiyaNote(blankToNull(p.nasiyaNote()));
+    }
+
+    /**
+     * Administrator hisoblarini faqat administrator yaratadi va o'zgartiradi: aks holda USERS_MANAGE ruxsati
+     * berilgan xodim o'ziga admin ochib yoki admin parolini almashtirib, to'liq huquqqa ega bo'lib olardi.
+     */
+    static void guardAdminAccounts(AuthUser me, Role currentRole, Role requestedRole) {
+        if (me.role().isAdmin()) {
+            return;
+        }
+        if ((currentRole != null && currentRole.isAdmin()) || requestedRole.isAdmin()) {
+            throw new AccessDeniedException("Administrator hisobini faqat administrator boshqaradi");
+        }
+    }
+
+    /** Administrator bo'lmagan xodim o'zida yo'q ruxsatni boshqaga bera olmaydi. */
+    static void guardGrantedPermissions(AuthUser me, List<Permission> requested) {
+        if (me.role().isAdmin() || requested == null) {
+            return;
+        }
+        if (!me.permissions().containsAll(requested)) {
+            throw new AccessDeniedException("O'zingizda yo'q ruxsatni bera olmaysiz");
+        }
     }
 
     private static String blankToNull(String s) {

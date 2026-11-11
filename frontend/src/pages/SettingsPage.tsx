@@ -241,11 +241,27 @@ function PartnerModal({ partner, onClose }: { partner: Partner | null; onClose: 
 function UsersCard() {
   const { t } = useTranslation();
   const [edit, setEdit] = useState<UserView | 'new' | null>(null);
+  const qc = useQueryClient();
   const users = useQuery({ queryKey: ['users'], queryFn: () => api.get<UserView[]>('/api/users') });
+  const bulk = useMutation({
+    mutationFn: (active: boolean) => api.post<{ changed: number }>('/api/users/bulk-active', { active }),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['users'] }); void qc.invalidateQueries({ queryKey: ['users-brief'] }); },
+  });
+  const list = users.data ?? [];
   return (
     <Card>
-      <CardHead title={t('users')} sub={t('usersSub')} right={<Btn size="sm" icon="plus" onClick={() => setEdit('new')}>{t('addUser')}</Btn>} />
-      <ErrorBox error={users.error} />
+      <CardHead title={t('users')}
+        sub={`${t('usersSub')} · ${t('active')}: ${list.filter((u) => u.active).length} / ${list.length}`}
+        right={
+          <div className="row" style={{ gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <Btn size="sm" variant="ghost" icon="check" disabled={bulk.isPending} onClick={() => bulk.mutate(true)}>{t('usersActivateAll')}</Btn>
+            <Btn size="sm" variant="ghost" icon="lock" disabled={bulk.isPending}
+              onClick={() => { if (window.confirm(t('usersBlockAllConfirm'))) bulk.mutate(false); }}>{t('usersBlockAll')}</Btn>
+            <Btn size="sm" icon="plus" onClick={() => setEdit('new')}>{t('addUser')}</Btn>
+          </div>
+        } />
+      <ErrorBox error={users.error ?? bulk.error} />
+      {bulk.data && <div className="card-pad faint" style={{ fontSize: 12, paddingTop: 8, paddingBottom: 0 }}>{t('usersBulkDone', { n: bulk.data.changed })}</div>}
       <div className="table-wrap">
         <table className="tbl">
           <thead><tr><th>{t('fio')}</th><th>{t('role')}</th><th>{t('branch')}</th><th>{t('permissions')}</th><th>{t('status')}</th></tr></thead>
@@ -325,16 +341,38 @@ function UserModal({ user, onClose }: { user: UserView | null; onClose: () => vo
     },
   });
   const isSelf = user?.id === me?.id;
+  const remove = useMutation({
+    mutationFn: () => api.del(`/api/users/${user!.id}`),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['users'] }); void qc.invalidateQueries({ queryKey: ['users-brief'] }); onClose(); },
+  });
+  // F.I.Sh dan login: "Aliyev Vali" -> "v.aliyev"
+  const genLogin = () => {
+    const parts = fullName.trim().toLowerCase().replace(/[ʻʼ'`’‘]/g, '').split(/\s+/).filter(Boolean)
+      .map((p) => p.replace(/[^a-z0-9]/g, ''));
+    if (parts.length === 0 || !parts[0]) return;
+    setUsername((parts[1] ? `${parts[1][0]}.${parts[0]}` : parts[0]).slice(0, 50));
+  };
   return (
     <Modal wide title={user ? `${t('edit')} · ${user.fullName}` : t('addUser')} onClose={onClose}
       footer={<>
+        {user && !isSelf && (
+          <Btn variant="danger" icon="x" disabled={remove.isPending} style={{ marginRight: 'auto' }}
+            onClick={() => { if (window.confirm(t('userDeleteConfirm', { name: user.fullName }))) remove.mutate(); }}>{t('userDelete')}</Btn>
+        )}
         <Btn variant="ghost" onClick={onClose}>{t('cancel')}</Btn>
         <Btn icon="check" disabled={save.isPending || !fullName || (!user && (!username || password.length < 8))} onClick={() => save.mutate()}>{t('save')}</Btn>
       </>}>
       <div className="col" style={{ gap: 14 }}>
-        <ErrorBox error={save.error} />
+        <ErrorBox error={save.error ?? remove.error} />
         <div className="form-grid">
-          {!user && <Field label={t('username')} req><input className="input" value={username} onChange={(e) => setUsername(e.target.value)} /></Field>}
+          {!user && (
+            <Field label={t('username')} req>
+              <div className="row" style={{ gap: 8 }}>
+                <input className="input" value={username} onChange={(e) => setUsername(e.target.value)} />
+                <Btn variant="ghost" icon="spark" disabled={!fullName.trim()} onClick={genLogin}>{t('userGenLogin')}</Btn>
+              </div>
+            </Field>
+          )}
           <Field label={t('fio')} req><input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} /></Field>
           <Field label={t('role')} hint={isSelf ? t('selfRoleLocked') : undefined}>
             <select className="select" value={role} disabled={isSelf} onChange={(e) => setRole(e.target.value as Role)}>

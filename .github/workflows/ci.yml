@@ -137,6 +137,13 @@ jobs:
           check localhost:8080/api/verifications/clients/$CLID/status
           check localhost:8080/api/settings/advanced
           check localhost:8080/api/mib/clients/$CLID
+          check -X POST localhost:8080/api/external-limits/clients/$CLID/check
+          check localhost:8080/api/dashboard/daily
+          check localhost:8080/api/applications/drafts
+          check localhost:8080/api/collection/roll-rate
+          check localhost:8080/api/clients/credit-monitor
+          check "localhost:8080/api/clients?risk=A&withDebt=true&size=3"
+          check "localhost:8080/api/analytics/pnl?from=2026-01-01&to=2026-12-31"
           check "localhost:8080/api/analytics?months=12"
           check "localhost:8080/api/warehouse/analytics?cover=30"
           check localhost:8080/api/warehouse/suppliers

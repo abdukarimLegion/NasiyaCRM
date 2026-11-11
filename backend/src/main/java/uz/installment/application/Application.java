@@ -128,6 +128,11 @@ public class Application extends AuditedEntity {
     @Column(name = "partner_notes", length = 500)
     private String partnerNotes;
 
+    /** Hamkorga topshirilgan tovarlarning seriya raqami / IMEI: [{"name": ..., "serial": ...}]. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "partner_serials", columnDefinition = "jsonb")
+    private java.util.List<Map<String, Object>> partnerSerials;
+
     /** Hamkor do'kondan ushlab qolgan komissiya (so'm). */
     @Column(name = "partner_commission", precision = 18, scale = 2)
     private BigDecimal partnerCommission;

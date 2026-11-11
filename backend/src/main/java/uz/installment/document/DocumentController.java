@@ -62,6 +62,14 @@ public class DocumentController {
         return pdf(documents.issue(id, Code.DEMAND, lang(lang), me));
     }
 
+    /** Qarzdorning ish joyiga va kafiliga so'rovnoma xati (Hard bosqich). */
+    @PostMapping("/contracts/{id}/employer-letter")
+    @PreAuthorize("hasAuthority('COLLECTION_WORK')")
+    public ResponseEntity<byte[]> employerLetter(@PathVariable Long id, @RequestParam(defaultValue = "uz") String lang,
+                                                 @AuthenticationPrincipal AuthUser me) {
+        return pdf(documents.issue(id, Code.EMPLOYER, lang(lang), me));
+    }
+
     @PostMapping("/contracts/{id}/claim")
     @PreAuthorize("hasAuthority('COLLECTION_LEGAL')")
     public ResponseEntity<byte[]> claim(@PathVariable Long id, @RequestParam(defaultValue = "uz") String lang,

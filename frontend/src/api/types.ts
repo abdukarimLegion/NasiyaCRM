@@ -379,6 +379,8 @@ export interface ApplicationView {
   contractNo?: string;
   createdAt: string;
   scoreDetails?: { stopFactors?: StopFactor[]; points?: Record<Factor, number> };
+  partnerNotes?: string;
+  partnerSerials?: { name: string; serial: string }[];
   provider: string;
   partnerName?: string;
   partnerTxId?: string;
@@ -503,6 +505,11 @@ export interface LegalCaseRow {
   branchName?: string;
   createdAt: string;
   updatedAt: string;
+  stateFee: number;
+  arrestRequestedAt?: string;
+  arrestNote?: string;
+  esudSubmittedAt?: string;
+  esudRef?: string;
 }
 
 export type DocCode = 'CONTRACT' | 'DEMAND' | 'CLAIM';
@@ -786,6 +793,123 @@ export interface MibState {
   fresh: boolean;
   needsCheck: boolean;
   history: MibCheck[];
+}
+
+export interface ApplicationDraft {
+  id: number;
+  clientId: number;
+  clientName: string;
+  clientPhone: string;
+  clientPinfl?: string;
+  step: number;
+  summary?: string;
+  amount?: number;
+  officerId: number;
+  officerName: string;
+  branchId?: number;
+  branchName?: string;
+  createdAt: string;
+  updatedAt: string;
+  payload?: Record<string, unknown>;
+}
+
+/** Hamkor tizimida ochilgan buyurtma: hamkor mijozga tasdiqlash kodi yuboradi. */
+export interface PartnerOrder {
+  partnerCode: string;
+  partnerName: string;
+  transactionId: string;
+  mock: boolean;
+  message?: string;
+}
+
+export interface DailyPlan {
+  sales: number;
+  contracts: number;
+  collection: number;
+}
+
+export interface DailyMonitor {
+  date: string;
+  branchId?: number;
+  plan: DailyPlan;
+  actual: DailyPlan;
+  dayProgressPct: number;
+}
+
+export interface CreditMonitorReport {
+  dtiNormPct: number;
+  clients: number;
+  avgScore?: number;
+  avgDtiPct?: number;
+  cleanClients: number;
+  flaggedClients: number;
+  rows: {
+    clientId: number; fullName: string; pinfl: string; phone: string; blacklisted: boolean; monthlyIncome?: number;
+    reportDate: string; source: string; score?: number; rating?: string; activeLoans: number; externalDebt: number;
+    externalMonthly: number; internalMonthly: number; internalDebt: number; dtiPct?: number; overdueFlag: boolean;
+    maxOverdueDays: number; note?: string;
+  }[];
+}
+
+export interface PnlReport {
+  from: string;
+  to: string;
+  days: number;
+  principalCollected: number;
+  markupCollected: number;
+  otherReceipts: number;
+  grossReceipts: number;
+  fundingCost: number;
+  acquiringFee: number;
+  partnerCommission: number;
+  financingCosts: number;
+  grossMargin: number;
+  opex: number;
+  netProfit: number;
+  marginPct: number;
+  eclReserve: number;
+  afterProvision: number;
+  issuedVolume: number;
+  issuedContracts: number;
+  partnerVolume: number;
+  fundingCostPct: number;
+  acquiringPct: number;
+}
+
+export interface RollRate {
+  fromDate: string;
+  toDate: string;
+  buckets: string[];
+  cells: { from: string; to: string; count: number; amount: number }[];
+}
+
+export interface PayLink {
+  url: string;
+  amount: number;
+  mock: boolean;
+  smsStatus?: string;
+}
+
+export type ExternalLimitStatus = 'AVAILABLE' | 'NO_LIMIT' | 'NOT_REGISTERED' | 'ERROR';
+
+export interface ExternalLimit {
+  provider: string;
+  providerName: string;
+  status: ExternalLimitStatus;
+  total: number;
+  used: number;
+  available: number;
+  maxTermMonths?: number;
+  mock: boolean;
+  message?: string;
+}
+
+export interface ExternalLimitReport {
+  clientId: number;
+  mock: boolean;
+  checkedAt: string;
+  totalAvailable: number;
+  items: ExternalLimit[];
 }
 
 export interface VerificationStatus {

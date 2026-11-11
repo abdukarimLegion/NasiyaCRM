@@ -4,10 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, qs } from '../api/client';
 import type { ClientListItem, ClientsSummary, Page } from '../api/types';
-import { Avatar, Btn, Card, Empty, ErrorBox, Icon, RiskPill, Stat } from '../components/ui';
+import { Avatar, Btn, Card, Empty, ErrorBox, Icon, RiskPill, Seg, Stat } from '../components/ui';
+import CreditMonitor from '../components/CreditMonitor';
 import { useAuth } from '../lib/auth';
 import { fmtMln } from '../lib/format';
 import ClientForm from './ClientForm';
+
+type Filter = '' | 'A' | 'B' | 'C' | 'D' | 'debt' | 'black';
+const FILTERS: Filter[] = ['', 'A', 'B', 'C', 'D', 'debt', 'black'];
 
 export default function ClientsPage() {
   const { t, i18n } = useTranslation();
@@ -20,6 +24,8 @@ export default function ClientsPage() {
   const [debounced, setDebounced] = useState('');
   const [page, setPage] = useState(0);
   const [adding, setAdding] = useState(false);
+  const [view, setView] = useState<'list' | 'monitor'>('list');
+  const [filter, setFilter] = useState<Filter>('');
 
   useEffect(() => {
     const h = setTimeout(() => { setDebounced(q.trim()); setPage(0); }, 300);
@@ -27,8 +33,12 @@ export default function ClientsPage() {
   }, [q]);
 
   const { data, error } = useQuery({
-    queryKey: ['clients', debounced, page],
-    queryFn: () => api.get<Page<ClientListItem>>(`/api/clients${qs({ q: debounced, page, size: 20 })}`),
+    queryKey: ['clients', debounced, page, filter],
+    queryFn: () => api.get<Page<ClientListItem>>(`/api/clients${qs({
+      q: debounced, page, size: 20,
+      risk: ['A', 'B', 'C', 'D'].includes(filter) ? filter : undefined,
+      withDebt: filter === 'debt' || undefined, blacklisted: filter === 'black' || undefined,
+    })}`),
   });
   const { data: sum } = useQuery({
     queryKey: ['clients-summary'],
@@ -42,8 +52,13 @@ export default function ClientsPage() {
           <h1 className="page-h1"><span className="h1-ic"><Icon name="clients" size={18} /></span>{t('clientsBase')}</h1>
           <span className="faint" style={{ fontSize: 12.5 }}>{t('clientsBaseSub')}</span>
         </div>
-        {canEdit && <Btn icon="plus" size="sm" onClick={() => setAdding(true)}>{t('newClient')}</Btn>}
+        <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
+          <Seg value={view} onChange={setView} options={[{ value: 'list', label: t('clientsTabList') }, { value: 'monitor', label: t('clientsTabMonitor') }]} />
+          {canEdit && <Btn icon="plus" size="sm" onClick={() => setAdding(true)}>{t('newClient')}</Btn>}
+        </div>
       </div>
+      {view === 'monitor' && <CreditMonitor />}
+      {view === 'list' && <>
 
       {sum && (
         <div className="kpi4" style={{ marginTop: 0 }}>
@@ -64,6 +79,13 @@ export default function ClientsPage() {
           <div className="search" style={{ minWidth: 0, width: '100%' }}>
             <Icon name="search" />
             <input placeholder={t('clientsSearch')} value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
+          <div className="seg" style={{ marginTop: 10, flexWrap: 'wrap' }}>
+            {FILTERS.map((f) => (
+              <button key={f} data-on={filter === f} onClick={() => { setFilter(f); setPage(0); }}>
+                {f === '' ? t('all') : f === 'debt' ? t('clientsFilterDebt') : f === 'black' ? t('clientsFilterBlack') : `Grade ${f}`}
+              </button>
+            ))}
           </div>
         </div>
         <div className="table-wrap">
@@ -132,6 +154,7 @@ export default function ClientsPage() {
           </div>
         )}
       </Card>
+      </>}
       {adding && <ClientForm onClose={() => setAdding(false)} onSaved={(c) => nav(`/clients/${c.id}`)} />}
     </div>
   );

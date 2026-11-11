@@ -8,6 +8,7 @@ import { Avatar, Badge, Btn, Card, CardHead, ContractStatusBadge, Empty, ErrorBo
 import { useAuth } from '../lib/auth';
 import { fmtDate, fmtSom } from '../lib/format';
 import ClientForm from './ClientForm';
+import ExternalLimitsPanel from '../components/ExternalLimitsPanel';
 import MibPanel from '../components/MibPanel';
 
 export default function ClientDetailPage() {
@@ -86,6 +87,7 @@ export default function ClientDetailPage() {
         </Card>
       </div>
       <div className="block"><MibPanel clientId={c.id} /></div>
+      <div className="block"><ExternalLimitsPanel key={c.id} clientId={c.id} /></div>
       <CreditReportsCard clientId={c.id} />
       {editing && <ClientForm initial={c} onClose={() => setEditing(false)} />}
     </div>

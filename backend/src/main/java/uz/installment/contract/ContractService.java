@@ -284,8 +284,9 @@ public class ContractService {
     }
 
     @Transactional
-    public ContractDetails cancel(Long id) {
+    public ContractDetails cancel(Long id, AuthUser me) {
         Contract c = contracts.findForUpdate(id).orElseThrow(() -> new NotFoundException("Shartnoma", id));
+        checkScope(c, me);
         boolean anyPaid = c.getSchedule().stream().anyMatch(s -> s.getPaidAmount().signum() > 0);
         if (anyPaid) {
             throw new BusinessException("HAS_PAYMENTS", "To'lov qilingan shartnomani bekor qilib bo'lmaydi");

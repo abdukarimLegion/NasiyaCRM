@@ -96,7 +96,7 @@ public class DocumentService {
             throw new BusinessException("NO_OVERDUE", "Shartnoma bo'yicha muddati o'tgan qarz yo'q");
         }
         long seq = jdbc.getJdbcTemplate().queryForObject("select nextval('document_no_seq')", Long.class);
-        String docNo = (code == Code.DEMAND ? "T" : "D") + "-" + LocalDate.now(clock).getYear() + "/"
+        String docNo = (code == Code.DEMAND ? "T" : code == Code.EMPLOYER ? "S" : "D") + "-" + LocalDate.now(clock).getYear() + "/"
                 + String.format("%05d", seq);
         Map<String, String> vars = vars(c, lang, docNo);
         var tpl = templates.get(code, lang);
@@ -111,7 +111,7 @@ public class DocumentService {
                 List.of(company(cfg) + "\n" + (ru ? "Уполномоченное лицо" : "Vakolatli shaxs")), footnote);
         byte[] bytes = PdfRenderer.render(doc);
 
-        BigDecimal amount = code == Code.DEMAND ? od.amount() : remaining(c);
+        BigDecimal amount = code == Code.CLAIM ? remaining(c) : od.amount();
         jdbc.update("""
                 insert into document_log (tenant_id, contract_id, code, doc_no, lang, amount, user_id)
                 values (:t, :c, :code, :no, :lang, :amount, :u)
@@ -120,7 +120,7 @@ public class DocumentService {
                 .addValue("lang", lang).addValue("amount", amount).addValue("u", me.id()));
         CollectionAction a = new CollectionAction();
         a.setContractId(c.getId());
-        a.setActionType(code == Code.DEMAND ? CollectionAction.Type.LETTER : CollectionAction.Type.LEGAL);
+        a.setActionType(code == Code.CLAIM ? CollectionAction.Type.LEGAL : CollectionAction.Type.LETTER);
         a.setResult(code.name());
         a.setNote(docNo);
         a.setUserId(me.id());
@@ -183,6 +183,9 @@ public class DocumentService {
         v.put("address", Stream.of(cl.getRegion(), cl.getDistrict(), cl.getAddress())
                 .filter(s -> s != null && !s.isBlank()).collect(Collectors.joining(", ")));
         v.put("phone", cl.getPhone());
+        v.put("workplace", cl.getWorkplace() == null || cl.getWorkplace().isBlank() ? "—" : cl.getWorkplace());
+        v.put("guarantor", c.getGuarantorName() == null || c.getGuarantorName().isBlank() ? "—"
+                : c.getGuarantorName() + (c.getGuarantorPhone() == null ? "" : " (" + c.getGuarantorPhone() + ")"));
         v.put("contract_no", c.getContractNo());
         v.put("contract_date", DATE.format(signedDate(c)));
         v.put("product", c.getProductName());

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, qs } from '../api/client';
-import type { ApplicationStatus, ApplicationView, Page, Partner } from '../api/types';
+import type { ApplicationDraft, ApplicationStatus, ApplicationView, Page, Partner, PartnerOrder } from '../api/types';
 import { Badge, Btn, Card, Empty, ErrorBox, Field, Icon, Modal, RiskPill, Stat, type Tone } from '../components/ui';
 import { useAuth } from '../lib/auth';
 import { useBranch } from '../lib/branch';
@@ -72,9 +72,27 @@ export default function ApplicationsPage() {
   const [partnerCode, setPartnerCode] = useState('');
   const [txId, setTxId] = useState('');
   const partnerList = useQuery({ queryKey: ['partners'], queryFn: () => api.get<Partner[]>('/api/partners'), enabled: !!handing });
+  const [smsCode, setSmsCode] = useState('');
+  const [orderInfo, setOrderInfo] = useState<PartnerOrder | null>(null);
+  const partnerOrder = useMutation({
+    mutationFn: (id: number) => api.post<PartnerOrder>(`/api/applications/${id}/partner-order`, { partnerCode }),
+    onSuccess: (o) => { setOrderInfo(o); setTxId(o.transactionId); },
+  });
   const handover = useMutation({
-    mutationFn: (id: number) => api.post<ApplicationView>(`/api/applications/${id}/handover`, { partnerCode, transactionId: txId || undefined }),
-    onSuccess: (a) => { setHanding(null); setTxId(''); setOpen(a); refresh(); },
+    mutationFn: (id: number) => api.post<ApplicationView>(`/api/applications/${id}/handover`,
+      { partnerCode, transactionId: txId || undefined, smsCode: smsCode || undefined }),
+    onSuccess: (a) => { setHanding(null); setTxId(''); setSmsCode(''); setOrderInfo(null); setOpen(a); refresh(); },
+  });
+
+  // Qoralamalar: konveyerda saqlab qo'yilgan, hali yuborilmagan arizalar
+  const drafts = useQuery({
+    queryKey: ['application-drafts', branch.param],
+    queryFn: () => api.get<ApplicationDraft[]>(`/api/applications/drafts${qs({ branchId: branch.param })}`),
+    enabled: can('CONTRACTS_CREATE'),
+  });
+  const dropDraft = useMutation({
+    mutationFn: (id: number) => api.del(`/api/applications/drafts/${id}`),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['application-drafts'] }),
   });
   const toContract = useMutation({
     mutationFn: (id: number) => api.post<ApplicationView>(`/api/applications/${id}/contract`),
@@ -100,6 +118,42 @@ export default function ApplicationsPage() {
         <Stat icon="contracts" tone="success" label={t('ap_CONTRACTED')} value={c?.CONTRACTED ?? '—'} sub={<>{t('ap_CONTRACTED_sub')}{(c?.PARTNER ?? 0) > 0 && <> · {t('ap_PARTNER')}: <b>{c?.PARTNER}</b></>}</>} />
         <Stat icon="x" tone="danger" label={t('ap_REJECTED')} value={c?.REJECTED ?? '—'} sub={t('ap_REJECTED_sub')} />
       </div>
+
+      {!!drafts.data?.length && (
+        <Card className="block">
+          <div className="card-pad row between" style={{ paddingBottom: 6 }}>
+            <b>{t('draftsTitle')} <Badge tone="warn">{drafts.data.length}</Badge></b>
+            <span className="faint" style={{ fontSize: 12 }}>{t('draftsSub')}</span>
+          </div>
+          <ErrorBox error={dropDraft.error} />
+          <div className="table-wrap">
+            <table className="tbl">
+              <tbody>
+                {drafts.data.map((d) => (
+                  <tr key={d.id} onClick={() => nav(`/new-credit?draft=${d.id}`)}>
+                    <td className="cell-main">
+                      <div className="col" style={{ gap: 1 }}>
+                        <b>{d.clientName}</b>
+                        <span className="mono faint" style={{ fontSize: 11 }}>{d.clientPhone}</span>
+                      </div>
+                    </td>
+                    <td className="muted" data-label={t('product')}>{d.summary ?? '—'}</td>
+                    <td className="num" data-label={t('installmentTotalShort')}>{d.amount != null ? fmtSom(d.amount, lang) : '—'}</td>
+                    <td data-label={t('status')}><Badge tone="warn" dot>{t('draftStep', { n: d.step + 1 })}</Badge></td>
+                    <td className="faint" style={{ fontSize: 11.5 }}>{d.officerName} · {fmtDateTime(d.updatedAt, lang)}</td>
+                    <td onClick={(e) => e.stopPropagation()}>
+                      <div className="row" style={{ gap: 6, justifyContent: 'flex-end' }}>
+                        <Btn size="sm" icon="chevR" onClick={() => nav(`/new-credit?draft=${d.id}`)}>{t('draftContinue')}</Btn>
+                        <Btn size="sm" variant="ghost" icon="x" disabled={dropDraft.isPending} onClick={() => dropDraft.mutate(d.id)}>{t('remove')}</Btn>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       <Card className="block">
         <div className="card-pad filter-bar">
@@ -200,6 +254,10 @@ export default function ApplicationsPage() {
                 <><dt>{t('provider')}</dt><dd>{open.partnerName} · {open.partnerTxId ?? '—'}</dd>
                   <dt>{t('commission')}</dt><dd>{fmtSom(open.partnerCommission, lang)}</dd></>
               )}
+              {!!open.partnerSerials?.length && (
+                <><dt>{t('wizSerials')}</dt><dd>{open.partnerSerials.map((s) => `${s.name}: ${s.serial}`).join('; ')}</dd></>
+              )}
+              {open.partnerNotes && <><dt>{t('note')}</dt><dd>{open.partnerNotes}</dd></>}
               {open.contractNo && <><dt>{t('contract')}</dt><dd><Link to={`/contracts/${open.contractId}`}>{open.contractNo}</Link></dd></>}
             </dl>
           </div>
@@ -213,7 +271,7 @@ export default function ApplicationsPage() {
             <Btn icon="check" disabled={!partnerCode || handover.isPending} onClick={() => handover.mutate(handing.id)}>{t('handover')}</Btn>
           </>}>
           <div className="col" style={{ gap: 12 }}>
-            <ErrorBox error={handover.error} />
+            <ErrorBox error={handover.error ?? partnerOrder.error} />
             <span className="faint" style={{ fontSize: 12.5 }}>{t('handoverHint')}</span>
             <Field label={t('provider')} req>
               <select className="select" value={partnerCode} onChange={(e) => setPartnerCode(e.target.value)}>
@@ -223,6 +281,13 @@ export default function ApplicationsPage() {
             </Field>
             <Field label={t('partnerTx')} hint={t('partnerTxHint')}>
               <input className="input" value={txId} onChange={(e) => setTxId(e.target.value)} maxLength={100} />
+            </Field>
+            <Btn variant="soft" icon="globe" disabled={!partnerCode || partnerOrder.isPending} style={{ alignSelf: 'flex-start' }}
+              onClick={() => partnerOrder.mutate(handing.id)}>{t('wizOrderOpen')}</Btn>
+            {orderInfo?.mock && <span className="faint" style={{ fontSize: 12 }}><b>{t('extLimMock')}</b> · {orderInfo.message}</span>}
+            <Field label={t('wizSmsCode')} hint={t('wizSmsHint')}>
+              <input className="input mono" inputMode="numeric" maxLength={6} value={smsCode}
+                onChange={(e) => setSmsCode(e.target.value.replace(/\D/g, ''))} />
             </Field>
           </div>
         </Modal>
