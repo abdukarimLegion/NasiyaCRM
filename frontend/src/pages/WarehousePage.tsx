@@ -6,6 +6,7 @@ import type { OrderStatus, PurchaseOrder, StockStatus, Supplier, WarehouseAnalyt
 import { Badge, Btn, Card, CardHead, Empty, ErrorBox, Field, Icon, Loading, Modal, Seg, Stat, type Tone } from '../components/ui';
 import { useAuth } from '../lib/auth';
 import { fmtDate, fmtMln, fmtSom } from '../lib/format';
+import { downloadCsv } from '../lib/csv';
 
 const STATUS_TONE: Record<StockStatus, Tone> = { OUT: 'danger', CRITICAL: 'danger', LOW: 'warn', OK: 'success', OVER: 'info', DEAD: 'neutral' };
 const ORDER_TONE: Record<OrderStatus, Tone> = { DRAFT: 'neutral', APPROVED: 'info', RECEIVED: 'success', CANCELLED: 'danger' };
@@ -97,6 +98,10 @@ function StockTab() {
             ))}
           </div>
           <div style={{ marginLeft: 'auto' }} className="row">
+            <Btn size="sm" variant="ghost" icon="download" onClick={() => downloadCsv('ombor_tahlili.csv',
+              [t('product'), 'SKU', t('category'), t('stock'), t('price'), t('whStockValue'), '30', '90', t('whCoverDays'), t('status'), t('whNeedOrder')],
+              (q.data?.products ?? []).map((p) => [p.name, p.sku ?? '', p.category, p.stock, p.price, p.stockValue, p.sold30, p.sold90,
+                p.coverDays ?? '', t(`st_${p.status}`), p.recommendedQty]))}>{t('whExport')}</Btn>
             <span className="faint" style={{ fontSize: 12 }}>{t('whCoverDays')}:</span>
             <Seg value={cover} onChange={setCover} options={['14', '30', '45', '60'].map((v) => ({ value: v, label: v }))} />
           </div>

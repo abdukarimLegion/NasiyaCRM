@@ -30,9 +30,12 @@ public class ClientController {
 
     @GetMapping
     public PageResponse<ClientDtos.ClientListItem> list(@RequestParam(required = false) String q,
+                                                        @RequestParam(required = false) ScoringEngine.RiskCategory risk,
+                                                        @RequestParam(defaultValue = "false") boolean withDebt,
+                                                        @RequestParam(defaultValue = "false") boolean blacklisted,
                                                         @RequestParam(defaultValue = "0") int page,
                                                         @RequestParam(defaultValue = "20") int size) {
-        return service.search(q, page, size);
+        return service.search(q, risk, withDebt, blacklisted, page, size);
     }
 
     @GetMapping("/{id}/limit")

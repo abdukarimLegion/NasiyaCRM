@@ -836,6 +836,21 @@ export interface DailyMonitor {
   dayProgressPct: number;
 }
 
+export interface CreditMonitorReport {
+  dtiNormPct: number;
+  clients: number;
+  avgScore?: number;
+  avgDtiPct?: number;
+  cleanClients: number;
+  flaggedClients: number;
+  rows: {
+    clientId: number; fullName: string; pinfl: string; phone: string; blacklisted: boolean; monthlyIncome?: number;
+    reportDate: string; source: string; score?: number; rating?: string; activeLoans: number; externalDebt: number;
+    externalMonthly: number; internalMonthly: number; internalDebt: number; dtiPct?: number; overdueFlag: boolean;
+    maxOverdueDays: number; note?: string;
+  }[];
+}
+
 export interface PnlReport {
   from: string;
   to: string;

@@ -39,9 +39,10 @@ public class ClientService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<ClientListItem> search(String q, int page, int size) {
+    public PageResponse<ClientListItem> search(String q, ScoringEngine.RiskCategory riskFilter, boolean withDebt,
+                                               boolean blacklisted, int page, int size) {
         String query = q == null ? "" : q.trim();
-        var p = repo.search(query, PageRequest.of(page, Math.min(size, 100), Sort.by(Sort.Direction.DESC, "id")));
+        var p = repo.search(query, riskFilter, withDebt, blacklisted, PageRequest.of(page, Math.min(size, 100), Sort.by(Sort.Direction.DESC, "id")));
         List<Long> ids = p.getContent().stream().map(Client::getId).toList();
         Map<Long, Stats> stats = ids.isEmpty() ? Map.of() : statsFor(ids);
         return PageResponse.of(p, c -> {

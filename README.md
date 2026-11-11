@@ -273,6 +273,24 @@ Hamkorlar** da. Limit = daromad × DTI × xavf koeffitsiyenti (A 1.0, B 0.8, C 0
 taxmin; yakuniy qaror hamkor tizimida. Ichki limit yetsa ichki murobaha, aks holda eng arzon komissiyali
 mos hamkor tavsiya etiladi. Topshirilgan savdoda shartnoma tuzilmaydi, tovar ombordan chiqadi, komissiya yoziladi.
 
+### Tashqi integratsiyalar (hozircha mock)
+
+Quyidagi tashqi tizimlar hali ulanmagan — ularning o'rnida namoyish (mock) adapterlar ishlaydi va interfeysda
+**DEMO** belgisi bilan ko'rsatiladi. Har biri bitta interfeys orqasida turadi, shuning uchun haqiqiy integratsiya
+qo'shilganda controller, servis va frontend kodi o'zgarmaydi.
+
+| Nima | Interfeys | Mock | Qanday ulanadi |
+|---|---|---|---|
+| Hamkor nasiya platformalari: limit, buyurtma, SMS kod bilan tasdiqlash | `partner/gateway/PartnerGateway` | `MockPartnerGateway` | Interfeysni amalga oshiruvchi bean yozing, `supports()` da hamkor kodini (`partners.code`) qaytaring — `PartnerGateways` uni avtomatik tanlaydi |
+| Elektron pochta | `notification/EmailSender` | `LogEmailSender` | Yangi bean'ni `@Primary` qiling |
+| Tezkor to'lov havolasi | `payment/PaymentLinkProvider` | `MockPaymentLinkProvider` | Yangi bean'ni `@Primary` qiling |
+| Elektron sud (E-SUD) | `collection/CourtFilingGateway` | `MockCourtFilingGateway` | Yangi bean'ni `@Primary` qiling |
+
+Hamkorlar ro'yxati `partners` jadvalida (Sozlamalar → Hamkorlar): Alif, Uzum Nasiya, TBC, Uzum Bank, Anor Bank,
+Open kart, Chakana, Payme Nasiya, Infin, Paynet Nasiya. Komissiya va muddat shartlari namunaviy — haqiqiy
+shartnoma shartlariga moslab tahrirlang. Mock gateway'da limit JShShIR'dan hisoblanadi (bir mijozda har safar
+bir xil), tasdiqlash kodi sifatida 4–6 xonali istalgan raqam qabul qilinadi (`0000` — rad etishni sinash uchun).
+
 ### Operator KPI
 
 Ball = rejasi qo'yilgan ko'rsatkichlar bajarilishining vaznli o'rtachasi (har biri 150% bilan cheklanadi):

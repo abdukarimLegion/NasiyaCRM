@@ -143,6 +143,56 @@ public class UserController {
         return auth.view(u);
     }
 
+    public record BulkActive(boolean active) {
+    }
+
+    public record BulkResult(int changed) {
+    }
+
+    /** Barcha xodimlarni birdan faollashtirish yoki bloklash (administratorlar va o'zi bundan mustasno). */
+    @PostMapping("/bulk-active")
+    @PreAuthorize("hasAuthority('USERS_MANAGE')")
+    @Transactional
+    public BulkResult bulkActive(@RequestBody BulkActive req, @AuthenticationPrincipal AuthUser me) {
+        int changed = 0;
+        for (User u : users.findAll()) {
+            if (u.getRole().isAdmin() || u.getId().equals(me.id()) || u.isActive() == req.active()) {
+                continue;
+            }
+            u.setActive(req.active());
+            changed++;
+        }
+        audit.record(req.active() ? "USERS_ACTIVATE_ALL" : "USERS_BLOCK_ALL", "USER", null, Map.of("changed", changed));
+        access.invalidateAll();
+        return new BulkResult(changed);
+    }
+
+    /**
+     * Xodimni tizimdan o'chirish. Faqat hali hech qanday yozuvi (shartnoma, to'lov, harakat ...) bo'lmagan xodim
+     * o'chiriladi; tarixi bor xodim o'chirilmaydi — uni bloklash kerak (hisobotlar buzilmasligi uchun).
+     */
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('USERS_MANAGE')")
+    @Transactional
+    public void delete(@PathVariable Long id, @AuthenticationPrincipal AuthUser me) {
+        User u = users.findById(id).orElseThrow(() -> new NotFoundException("Foydalanuvchi", id));
+        if (u.getId().equals(me.id())) {
+            throw new BusinessException("SELF_LOCK", "O'zingizni o'chira olmaysiz");
+        }
+        guardAdminAccounts(me, u.getRole(), u.getRole());
+        String username = u.getUsername();
+        try {
+            users.delete(u);
+            users.flush();
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new BusinessException("USER_HAS_HISTORY",
+                    "Bu xodim nomidan yozuvlar mavjud (shartnoma, to'lov yoki harakatlar) — o'chirib bo'lmaydi, uni bloklang");
+        }
+        audit.record("USER_DELETE", "USER", id, Map.of("username", username));
+        access.invalidate(id);
+    }
+
     private void applyProfile(User u, Profile p) {
         if (p == null) {
             return;
