@@ -505,6 +505,11 @@ export interface LegalCaseRow {
   branchName?: string;
   createdAt: string;
   updatedAt: string;
+  stateFee: number;
+  arrestRequestedAt?: string;
+  arrestNote?: string;
+  esudSubmittedAt?: string;
+  esudRef?: string;
 }
 
 export type DocCode = 'CONTRACT' | 'DEMAND' | 'CLAIM';
@@ -829,6 +834,45 @@ export interface DailyMonitor {
   plan: DailyPlan;
   actual: DailyPlan;
   dayProgressPct: number;
+}
+
+export interface PnlReport {
+  from: string;
+  to: string;
+  days: number;
+  principalCollected: number;
+  markupCollected: number;
+  otherReceipts: number;
+  grossReceipts: number;
+  fundingCost: number;
+  acquiringFee: number;
+  partnerCommission: number;
+  financingCosts: number;
+  grossMargin: number;
+  opex: number;
+  netProfit: number;
+  marginPct: number;
+  eclReserve: number;
+  afterProvision: number;
+  issuedVolume: number;
+  issuedContracts: number;
+  partnerVolume: number;
+  fundingCostPct: number;
+  acquiringPct: number;
+}
+
+export interface RollRate {
+  fromDate: string;
+  toDate: string;
+  buckets: string[];
+  cells: { from: string; to: string; count: number; amount: number }[];
+}
+
+export interface PayLink {
+  url: string;
+  amount: number;
+  mock: boolean;
+  smsStatus?: string;
 }
 
 export type ExternalLimitStatus = 'AVAILABLE' | 'NO_LIMIT' | 'NOT_REGISTERED' | 'ERROR';

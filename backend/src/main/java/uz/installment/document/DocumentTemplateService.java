@@ -17,7 +17,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class DocumentTemplateService {
 
-    public enum Code { CONTRACT, DEMAND, CLAIM }
+    public enum Code { CONTRACT, DEMAND, CLAIM, EMPLOYER }
 
     public record Template(Code code, String lang, String title, String body, Instant updatedAt) {
     }

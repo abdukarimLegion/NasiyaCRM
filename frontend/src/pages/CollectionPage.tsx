@@ -4,7 +4,7 @@ import { Link, Navigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, downloadFile, openPdf, qs } from '../api/client';
 import type {
-  ActionType, CollectionActionDto, CollectionStage, LegalCaseRow, LegalStatus, OverdueRow, UserBrief,
+  ActionType, CollectionActionDto, CollectionStage, LegalCaseRow, LegalStatus, OverdueRow, UserBrief, PayLink, RollRate,
 } from '../api/types';
 import { Badge, Btn, Card, Empty, ErrorBox, Field, Icon, Modal, type Tone } from '../components/ui';
 import type { IconName } from '../components/icons';
@@ -137,8 +137,68 @@ function Overview({ rows, loaded }: { rows: OverdueRow[]; loaded: boolean }) {
         </div>
         {loaded && list.length === 0 && <Empty>{t('noOverdue')}</Empty>}
       </Card>
+      <RollRateCard />
       {history && <ActionsModal row={history} onClose={() => setHistory(null)} />}
     </>
+  );
+}
+
+const RR_TO = ['CURRENT', 'D1_30', 'D31_60', 'D61_90', 'D90_PLUS', 'PAID'] as const;
+
+/** Roll-rate: 30 kun oldingi kechikish oralig'idan hozirgisiga o'tgan shartnomalar ulushi. */
+function RollRateCard() {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
+  const branch = useBranch();
+  const q = useQuery({
+    queryKey: ['roll-rate', branch.param],
+    queryFn: () => api.get<RollRate>(`/api/collection/roll-rate${qs({ branchId: branch.param })}`),
+  });
+  const d = q.data;
+  if (!d) return <ErrorBox error={q.error} />;
+  const cell = (f: string, to: string) => d.cells.find((c) => c.from === f && c.to === to);
+  return (
+    <Card className="block">
+      <div className="card-head">
+        <div className="col" style={{ gap: 1 }}>
+          <h3>{t('rrTitle')}</h3>
+          <span className="sub">{t('rrSub', { from: fmtDate(d.fromDate, lang), to: fmtDate(d.toDate, lang) })}</span>
+        </div>
+      </div>
+      <div className="table-wrap">
+        <table className="tbl rr-tbl">
+          <thead><tr>
+            <th>{t('rrFrom')}</th>
+            {RR_TO.map((b) => <th key={b} className="num">{t(`rr_${b}`)}</th>)}
+            <th className="num">{t('total')}</th>
+          </tr></thead>
+          <tbody>
+            {d.buckets.map((f, fi) => {
+              const total = d.cells.filter((c) => c.from === f).reduce((a, c) => a + c.count, 0);
+              return (
+                <tr key={f} style={{ cursor: 'default' }}>
+                  <td><b>{t(`rr_${f}`)}</b></td>
+                  {RR_TO.map((to, ti) => {
+                    const c = cell(f, to);
+                    const share = c && total ? Math.round((c.count / total) * 100) : 0;
+                    // chapga/yopilishga o'tish — yaxshilanish, o'ngga — yomonlashish
+                    const tone = !c ? undefined : to === 'PAID' || ti < fi ? 'var(--success)' : ti > fi ? 'var(--danger)' : undefined;
+                    return (
+                      <td key={to} className="num" title={c ? fmtSom(c.amount, lang) : undefined}
+                        style={c ? { background: `color-mix(in srgb, ${tone ?? 'var(--text-faint)'} ${Math.min(34, 6 + share / 3)}%, transparent)` } : undefined}>
+                        {c ? <><b>{share}%</b> <span className="faint" style={{ fontSize: 11 }}>({c.count})</span></> : <span className="faint">—</span>}
+                      </td>
+                    );
+                  })}
+                  <td className="num mono">{total}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="card-pad faint" style={{ fontSize: 12 }}>{t('rrHint')}</div>
+    </Card>
   );
 }
 
@@ -151,6 +211,8 @@ function SoftView({ rows, loaded }: { rows: OverdueRow[]; loaded: boolean }) {
   const [sel, setSel] = useState<Set<number>>(new Set());
   const [call, setCall] = useState<OverdueRow | null>(null);
   const [sms, setSms] = useState<OverdueRow[] | null>(null);
+  const [mail, setMail] = useState<OverdueRow | null>(null);
+  const [link, setLink] = useState<OverdueRow | null>(null);
   const [history, setHistory] = useState<OverdueRow | null>(null);
   const today = todayIso();
 
@@ -229,6 +291,8 @@ function SoftView({ rows, loaded }: { rows: OverdueRow[]; loaded: boolean }) {
                         <a className="act-btn" href={`tel:${r.phone}`} title={t('a_CALL')} onClick={() => setCall(r)}><Icon name="phone" size={15} /></a>
                         <button className="act-btn" title={t('callResult')} onClick={() => setCall(r)}><Icon name="userCheck" size={15} /></button>
                         <button className="act-btn" title={t('sendSms')} onClick={() => setSms([r])}><Icon name="message" size={15} /></button>
+                        <button className="act-btn" title={t('emailNotice')} onClick={() => setMail(r)}><Icon name="send" size={15} /></button>
+                        <button className="act-btn" title={t('payLink')} onClick={() => setLink(r)}><Icon name="card" size={15} /></button>
                       </div>
                     )}
                   </td>
@@ -241,6 +305,8 @@ function SoftView({ rows, loaded }: { rows: OverdueRow[]; loaded: boolean }) {
       </Card>
       {call && <CallModal row={call} onClose={() => setCall(null)} />}
       {sms && <SmsModal rows={sms} onClose={() => { setSms(null); setSel(new Set()); }} />}
+      {mail && <EmailModal row={mail} onClose={() => setMail(null)} />}
+      {link && <PayLinkModal row={link} onClose={() => setLink(null)} />}
       {history && <ActionsModal row={history} onClose={() => setHistory(null)} />}
     </>
   );
@@ -266,6 +332,15 @@ function HardView({ rows, loaded }: { rows: OverdueRow[]; loaded: boolean }) {
     setDocErr(null);
     try {
       await openPdf('POST', `/api/documents/contracts/${r.contractId}/demand?lang=${lang === 'ru' ? 'ru' : 'uz'}`);
+      void qc.invalidateQueries({ queryKey: ['overdue'] });
+    } catch (e) {
+      setDocErr(e);
+    }
+  };
+  const employerLetter = async (r: OverdueRow) => {
+    setDocErr(null);
+    try {
+      await openPdf('POST', `/api/documents/contracts/${r.contractId}/employer-letter?lang=${lang === 'ru' ? 'ru' : 'uz'}`);
       void qc.invalidateQueries({ queryKey: ['overdue'] });
     } catch (e) {
       setDocErr(e);
@@ -320,6 +395,7 @@ function HardView({ rows, loaded }: { rows: OverdueRow[]; loaded: boolean }) {
                     {can('COLLECTION_WORK') && (
                       <div className="row" style={{ gap: 4 }}>
                         <button className="act-btn" title={t('docDemand')} onClick={() => void demand(r)}><Icon name="printer" size={15} /></button>
+                        <button className="act-btn" title={t('docEmployer')} onClick={() => void employerLetter(r)}><Icon name="briefcase" size={15} /></button>
                         <button className="act-btn" title={t('planVisit')} onClick={() => setVisit(r)}><Icon name="pin" size={15} /></button>
                         <a className="act-btn" href={`tel:${r.phone}`} title={t('a_CALL')}><Icon name="phone" size={15} /></a>
                       </div>
@@ -673,6 +749,76 @@ function VisitModal({ row, onClose }: { row: OverdueRow; onClose: () => void }) 
   );
 }
 
+/** Elektron to'lov xabarnomasi: manzilni operator kiritadi, natija undirish tarixiga yoziladi. */
+function EmailModal({ row, onClose }: { row: OverdueRow; onClose: () => void }) {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
+  const invalidate = useInvalidate(row.contractId);
+  const [to, setTo] = useState('');
+  const [subject, setSubject] = useState(t('emailSubjectTpl', { no: row.contractNo }));
+  const [text, setText] = useState(t('emailBodyTpl', {
+    name: row.clientName, no: row.contractNo, sum: fmtSom(row.overdueAmount, lang), days: row.daysLate,
+  }));
+  const send = useMutation({
+    mutationFn: () => api.post<{ sent: boolean; mock: boolean; error?: string }>(`/api/collection/contracts/${row.contractId}/email`, { to, subject, text }),
+    onSuccess: invalidate,
+  });
+  const r = send.data;
+  return (
+    <Modal wide title={`${t('emailNotice')} · ${row.clientName}`} onClose={onClose}
+      footer={<>
+        <Btn variant="ghost" onClick={onClose}>{r ? t('close') : t('cancel')}</Btn>
+        {!r && <Btn icon="send" disabled={send.isPending || !to.includes('@') || !text.trim()} onClick={() => send.mutate()}>{t('send')}</Btn>}
+      </>}>
+      <div className="col" style={{ gap: 12 }}>
+        <ErrorBox error={send.error} />
+        {r && <div className={`stage-tip ${r.sent ? 'st-info' : 'st-danger'}`} style={{ marginTop: 0 }}><Icon name={r.sent ? 'check' : 'alert'} size={16} />
+          <span>{r.sent ? t(r.mock ? 'emailSentMock' : 'emailSent') : r.error}</span></div>}
+        <Field label={t('emailTo')} req><input className="input" type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="mijoz@example.uz" /></Field>
+        <Field label={t('emailSubject')} req><input className="input" maxLength={200} value={subject} onChange={(e) => setSubject(e.target.value)} /></Field>
+        <Field label={t('emailText')} req><textarea className="input" rows={7} maxLength={4000} value={text} onChange={(e) => setText(e.target.value)} /></Field>
+      </div>
+    </Modal>
+  );
+}
+
+/** Muddati o'tgan summa uchun tezkor to'lov havolasi: nusxalash yoki mijozga SMS bilan yuborish. */
+function PayLinkModal({ row, onClose }: { row: OverdueRow; onClose: () => void }) {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
+  const invalidate = useInvalidate(row.contractId);
+  const make = useMutation({
+    mutationFn: (sendSms: boolean) => api.post<PayLink>(`/api/collection/contracts/${row.contractId}/pay-link`, { sendSms }),
+    onSuccess: invalidate,
+  });
+  const d = make.data;
+  return (
+    <Modal title={`${t('payLink')} · ${row.clientName}`} onClose={onClose}
+      footer={<>
+        <Btn variant="ghost" onClick={onClose}>{t('close')}</Btn>
+        <Btn variant="soft" icon="card" disabled={make.isPending} onClick={() => make.mutate(false)}>{t('payLinkMake')}</Btn>
+        <Btn icon="send" disabled={make.isPending} onClick={() => make.mutate(true)}>{t('payLinkSms')}</Btn>
+      </>}>
+      <div className="col" style={{ gap: 12 }}>
+        <ErrorBox error={make.error} />
+        <span className="faint" style={{ fontSize: 12.5 }}>{t('payLinkHint', { sum: fmtSom(row.overdueAmount, lang), phone: row.phone })}</span>
+        {d && (
+          <>
+            <Field label={t('payLinkUrl')}>
+              <div className="row" style={{ gap: 8 }}>
+                <input className="input mono" readOnly value={d.url} onFocus={(e) => e.target.select()} />
+                <Btn variant="ghost" icon="doc" onClick={() => void navigator.clipboard?.writeText(d.url)}>{t('copy')}</Btn>
+              </div>
+            </Field>
+            {d.smsStatus && <span style={{ fontSize: 12.5 }}>SMS: <b>{d.smsStatus}</b></span>}
+            {d.mock && <div className="stage-tip st-warn" style={{ marginTop: 0 }}><Icon name="alert" size={16} /><span><b>{t('extLimMock')}</b> · {t('payLinkMock')}</span></div>}
+          </>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 function LegalModal({ row, onClose }: { row: LegalCaseRow; onClose: () => void }) {
   const { t, i18n } = useTranslation();
   const qc = useQueryClient();
@@ -692,6 +838,15 @@ function LegalModal({ row, onClose }: { row: LegalCaseRow; onClose: () => void }
     },
   });
   const set = (k: keyof typeof d, v: string) => setD({ ...d, [k]: v });
+  const refreshLegal = () => { void qc.invalidateQueries({ queryKey: ['legal'] }); void qc.invalidateQueries({ queryKey: ['actions'] }); };
+  const esud = useMutation({
+    mutationFn: () => api.post<{ reference: string; mock: boolean; message?: string }>(`/api/collection/legal/${row.id}/esud`),
+    onSuccess: refreshLegal,
+  });
+  const arrest = useMutation({
+    mutationFn: () => api.post(`/api/collection/legal/${row.id}/arrest`, { note: d.note || undefined }),
+    onSuccess: refreshLegal,
+  });
   return (
     <Modal wide title={`${row.clientName} · ${row.contractNo}`} onClose={onClose}
       footer={<>
@@ -721,6 +876,24 @@ function LegalModal({ row, onClose }: { row: LegalCaseRow; onClose: () => void }
           <Field label={t('enforcementNo')}><input className="input mono" value={d.enforcementNo} onChange={(e) => set('enforcementNo', e.target.value)} /></Field>
         </div>
         <Field label={t('note')}><textarea className="input" rows={2} value={d.note} onChange={(e) => set('note', e.target.value)} /></Field>
+        <div className="well-grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+          <div className="well"><span className="well-label">{t('stateFee')}</span><b className="well-val">{fmtSom(row.stateFee, i18n.language)}</b></div>
+          <div className="well">
+            <span className="well-label">{t('esud')}</span>
+            {row.esudSubmittedAt
+              ? <b className="well-val mono" style={{ fontSize: 12 }}>{row.esudRef}</b>
+              : <Btn size="sm" variant="soft" icon="upload" disabled={esud.isPending || row.status === 'CLOSED'} onClick={() => esud.mutate()}>{t('esudSubmit')}</Btn>}
+          </div>
+          <div className="well">
+            <span className="well-label">{t('arrest')}</span>
+            {row.arrestRequestedAt
+              ? <b className="well-val" style={{ fontSize: 12 }}>{fmtDate(row.arrestRequestedAt, i18n.language)}</b>
+              : <Btn size="sm" variant="soft" icon="lock" disabled={arrest.isPending || row.status === 'CLOSED'} onClick={() => arrest.mutate()}>{t('arrestRequest')}</Btn>}
+          </div>
+        </div>
+        {esud.data?.mock && <div className="stage-tip st-warn" style={{ marginTop: 0 }}><Icon name="alert" size={16} /><span><b>{t('extLimMock')}</b> · {esud.data.message}</span></div>}
+        <span className="faint" style={{ fontSize: 11.5 }}>{t('arrestHint')}</span>
+        <ErrorBox error={esud.error ?? arrest.error} />
         {row.status === 'PRETRIAL' && d.status === 'FILED' && <div className="stage-tip st-info"><Icon name="spark" size={16} /><span>{t('claimRecalc')}</span></div>}
         <ErrorBox error={save.error} />
       </div>

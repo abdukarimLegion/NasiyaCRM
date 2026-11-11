@@ -311,7 +311,7 @@ function Wizard({ initial, initialStep, draftId: initialDraftId }: { initial: Wi
               <dt>{t('wizDoneValue')}</dt><dd className="mono">{fmtSom(done.costPrice, lang)}</dd>
               <dt>{t('commission')}</dt><dd className="mono">{fmtSom(done.partnerCommission, lang)}</dd>
             </dl>
-            <div className="stage-tip" style={{ marginTop: 0 }}><Icon name="shield" size={18} /><span>{t('wizDoneNote')}</span></div>
+            <div className="stage-tip st-info" style={{ marginTop: 0 }}><Icon name="shield" size={18} /><span>{t('wizDoneNote')}</span></div>
             <Btn icon="check" onClick={() => nav(`/applications?focus=${done.id}`)}>{t('wizBackToList')}</Btn>
           </div>
         </Card>
@@ -619,7 +619,7 @@ function Wizard({ initial, initialStep, draftId: initialDraftId }: { initial: Wi
           <Card>
             <CardHead title={t('wizPartnerTitle')} sub={`${chosenOffer?.name ?? chosen} · ${client?.fullName ?? ''}`} />
             <div className="card-pad col" style={{ gap: 16 }}>
-              <div className="stage-tip" style={{ marginTop: 0 }}><Icon name="shield" size={18} /><span>{t('wizPartnerFunded', { name: chosenOffer?.name ?? chosen })}</span></div>
+              <div className="stage-tip st-info" style={{ marginTop: 0 }}><Icon name="shield" size={18} /><span>{t('wizPartnerFunded', { name: chosenOffer?.name ?? chosen })}</span></div>
               {decision === 'REVIEW' && !can('CONTRACTS_APPROVE') && !application && <div className="stage-tip st-warn"><Icon name="alert" size={18} /><span>{t('wizReviewNote')}</span></div>}
               {!order ? (
                 <>

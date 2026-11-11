@@ -246,3 +246,19 @@
 .wh-sug-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; flex-wrap: wrap; }
 
 .mib-cases { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+
+/* Kunlik reja monitoringi */
+.daily-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+@media (max-width: 860px) { .daily-grid { grid-template-columns: 1fr; } }
+.daily-bar { position: relative; height: 10px; border-radius: 99px; background: var(--surface-3); }
+.daily-bar > i { display: block; height: 100%; border-radius: inherit; transition: width .5s cubic-bezier(.4,0,.2,1); }
+.daily-mark { position: absolute; top: -3px; width: 2px; height: 16px; background: var(--text); border-radius: 2px; opacity: .55; }
+
+/* Roll-rate matritsasi */
+.rr-tbl td.num { text-align: center; }
+.rr-tbl th.num { text-align: center; }
+
+/* P&L hisoboti */
+.pnl-tbl tr[data-kind="head"] td { font-weight: 700; background: var(--surface-2); }
+.pnl-tbl tr[data-kind="total"] td, .pnl-tbl tr[data-kind="result"] td { font-weight: 700; border-top: 2px solid var(--border); }
+.pnl-tbl tr[data-kind="line"] td:first-child, .pnl-tbl tr[data-kind="minus"] td:first-child { padding-left: 34px; }
